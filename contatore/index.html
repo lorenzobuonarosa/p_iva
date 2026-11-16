@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calcolatore forfettario e ordinario – Radar QN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,700&display=swap">
+<link rel="stylesheet" href="../assets/radar.css">
+<style>
+  .ctl { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 32px; margin: 26px 0 0; }
+  .ctl__full { grid-column: 1 / -1; }
+  @media (max-width: 559px) { .ctl { grid-template-columns: 1fr; gap: 20px; } }
+  .ctl label, .ctl .lab { display: block; font-size: 13px; font-weight: 600; color: var(--ink); margin: 0 0 8px; }
+  .hint { font-size: 12px; line-height: 1.4; color: var(--ink-2); margin: 6px 0 0; }
+
+  .inc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .inc-head label { margin: 0; }
+  .num-in { display: inline-flex; align-items: baseline; gap: 4px; border-bottom: 1.5px solid var(--ink); padding: 0 0 2px; }
+  .num-in input {
+    font: 700 24px/1.1 var(--sans); letter-spacing: -0.02em; color: var(--ink); background: transparent; border: 0; outline: none;
+    width: 6.2ch; text-align: right; font-variant-numeric: tabular-nums; padding: 0;
+  }
+  .num-in span { font-size: 15px; font-weight: 600; color: var(--ink-2); }
+  .num-in:focus-within { border-color: var(--blue); }
+
+  /* slider */
+  .rng { position: relative; padding: 10px 0 22px; }
+  .rng input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 20px; background: transparent; margin: 0; position: relative; z-index: 2; cursor: pointer; }
+  .rng input[type=range]:focus { outline: none; }
+  .rng input[type=range]::-webkit-slider-runnable-track { height: 3px; background: linear-gradient(to right, var(--blue) 0 var(--p, 50%), var(--rule) var(--p, 50%) 100%); border-radius: 2px; }
+  .rng input[type=range]::-moz-range-track { height: 3px; background: var(--rule); border-radius: 2px; }
+  .rng input[type=range]::-moz-range-progress { height: 3px; background: var(--blue); border-radius: 2px; }
+  .rng input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--blue); border: 2px solid var(--bg); box-shadow: 0 0 0 1px var(--blue); margin-top: -7.5px; }
+  .rng input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--blue); border: 2px solid var(--bg); box-shadow: 0 0 0 1px var(--blue); }
+  .rng input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--blue-5); }
+  .mk { position: absolute; top: 24px; transform: translateX(-50%); font-size: 11px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; z-index: 1; text-align: center; }
+  .mk::before { content: ""; display: block; width: 1px; height: 6px; background: var(--ink-2); margin: 0 auto 2px; }
+  @media (max-width: 559px) { .mk__u { display: none; } }
+  .mk--end { color: var(--ink-2); font-weight: 400; }
+  .mk--end::before { display: none; }
+
+  select {
+    width: 100%; font: 500 14px/1.3 var(--sans); color: var(--ink); background: transparent; border: 0; border-bottom: 1.5px solid var(--ink);
+    padding: 4px 22px 5px 0; border-radius: 0; -webkit-appearance: none; appearance: none; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%);
+    background-position: calc(100% - 9px) 52%, calc(100% - 4px) 52%; background-size: 5px 5px; background-repeat: no-repeat;
+  }
+  select:focus { outline: none; border-color: var(--blue); }
+  select option { color: #1a1a1a; background: #fff; }
+
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg button {
+    font: 500 13px/1.25 var(--sans); color: var(--ink); background: transparent; border: 1px solid var(--grey-light);
+    border-radius: 2px; padding: 6px 10px; cursor: pointer; text-align: left;
+  }
+  .seg button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+  .seg button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  .chk { display: flex !important; align-items: center; gap: 8px; font-weight: 500 !important; cursor: pointer; margin: 0 !important; font-size: 13px; }
+  .chk input { accent-color: var(--blue); width: 16px; height: 16px; margin: 0; }
+
+  .rng--small .mk { display: none; }
+  .val-inline { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* risultati */
+  .res { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--ink); }
+  .status { font-size: 14px; line-height: 1.45; color: var(--ink); margin: 0; }
+  .status p { margin: 0 0 4px; }
+  .status .sub { color: var(--ink-2); font-size: 13px; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 3px 6px 2px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; color: #fff; }
+  .badge--red { background: var(--red-2); }
+  .badge--blue { background: var(--blue-2); }
+  .badge--grey { background: var(--grey-2); }
+  :root[data-theme="dark"] .badge { color: #121212; }
+
+  .r-big { margin-top: 18px; }
+  .r-big__num.is-blue { color: var(--blue); }
+  .r-big__num.is-red { color: var(--red); }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 22px; }
+  @media (max-width: 559px) { .cols { grid-template-columns: 1fr; gap: 26px; } }
+  .col { transition: opacity 200ms ease; min-width: 0; }
+  .col h2 { font-size: 15px; font-weight: 700; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .col h2 small { font-size: 12px; font-weight: 500; color: var(--ink-2); }
+  .col.is-off { opacity: 0.35; }
+  .col .off-note { display: none; font-size: 13px; color: var(--ink); margin: 6px 0 0; font-weight: 600; }
+  .col.is-off .off-note { display: block; }
+  .rowv { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; line-height: 1.3; padding: 5px 0; font-variant-numeric: tabular-nums; }
+  .rowv span:first-child { color: var(--ink-2); }
+  .rowv b { font-weight: 600; white-space: nowrap; }
+  .rowv--tot { border-top: 1px solid var(--rule); margin-top: 3px; padding-top: 7px; }
+  .rowv--tot span:first-child, .rowv--net span:first-child { color: var(--ink); font-weight: 600; }
+  .rowv--net b { font-size: 18px; font-weight: 700; }
+  .rowv .det { display: block; font-size: 11.5px; color: var(--ink-2); font-weight: 400; }
+  .bar { display: flex; gap: 2px; height: 14px; margin: 10px 0 4px; }
+  .bar i { display: block; height: 100%; transition: width 450ms cubic-bezier(.22,.61,.36,1); }
+  .bar i:last-child { border-radius: 0 2px 2px 0; }
+  .eff { font-size: 12px; color: var(--ink-2); margin: 2px 0 0; }
+
+  .iva { margin: 20px 0 0; font-size: 13px; line-height: 1.45; color: var(--ink); padding: 10px 12px; border-left: 2px solid var(--ink-2); }
+  .iva[hidden] { display: none; }
+
+  details.meth { margin-top: 22px; font-size: 12px; line-height: 1.5; color: var(--ink-2); }
+  details.meth summary { cursor: pointer; font-weight: 600; color: var(--ink); font-size: 13px; }
+  details.meth ul { padding-left: 18px; margin: 8px 0; }
+  details.meth li { margin: 0 0 4px; }
+  details.meth p { margin: 8px 0; }
+  @media (prefers-reduced-motion: reduce) { .bar i, .col { transition: none; } }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="../assets/radar.js"></script>
+<script src="calc.js"></script>
+</head>
+<body>
+<main class="radar">
+  <header>
+    <h1 class="r-title">Quanto pagheresti con la flat tax</h1>
+    <p class="r-sub">Imposte e contributi con il regime forfettario e con quello ordinario, regole 2027. Inserisci i tuoi incassi</p>
+  </header>
+
+  <form class="ctl" id="ctl" onsubmit="return false" autocomplete="off">
+    <div class="ctl__full">
+      <div class="inc-head">
+        <label for="inc-num">Incassi annui <span style="font-weight:400;color:var(--ink-2)">(ricavi o compensi, al netto dell'IVA)</span></label>
+        <span class="num-in"><input id="inc-num" type="text" inputmode="numeric" aria-label="Incassi annui in euro"><span>euro</span></span>
+      </div>
+      <div class="rng" id="inc-rng">
+        <input id="inc" type="range" min="10000" max="150000" step="1000" value="90000" aria-label="Incassi annui">
+      </div>
+    </div>
+
+    <div>
+      <label for="att">Attività</label>
+      <select id="att"></select>
+      <p class="hint" id="att-hint"></p>
+    </div>
+
+    <div>
+      <span class="lab" id="prev-lab">Previdenza</span>
+      <div class="seg" role="group" aria-labelledby="prev-lab" id="prev">
+        <button type="button" data-v="gs">Gestione separata INPS (professionisti senza cassa)</button>
+        <button type="button" data-v="artcom">Artigiani e commercianti INPS</button>
+      </div>
+    </div>
+
+    <div>
+      <label for="costi">Costi reali dell'attività: <span class="val-inline" id="costi-v"></span> degli incassi</label>
+      <div class="rng rng--small" style="padding-bottom:0">
+        <input id="costi" type="range" min="0" max="60" step="1" value="15">
+      </div>
+      <p class="hint">Servono solo per il regime ordinario, dove si deducono le spese vere. Nel forfettario conta il coefficiente dell'attività.</p>
+    </div>
+
+    <div>
+      <span class="lab" id="cli-lab">Clienti</span>
+      <div class="seg" role="group" aria-labelledby="cli-lab" id="cli">
+        <button type="button" data-v="imprese">Aziende e professionisti</button>
+        <button type="button" data-v="privati">Privati</button>
+      </div>
+      <label class="chk" style="margin-top:14px !important"><input type="checkbox" id="start"> Attività avviata da meno di 5 anni</label>
+    </div>
+  </form>
+
+  <section class="res" aria-live="polite">
+    <div class="status" id="status"></div>
+
+    <div class="r-big" id="big">
+      <span class="r-big__num" id="big-num">&nbsp;</span>
+      <span class="r-big__label" id="big-label"></span>
+    </div>
+
+    <div class="cols">
+      <div class="col" id="col-f">
+        <h2>Forfettario <small id="f-sub"></small></h2>
+        <div class="rowv"><span id="f-tax-l">Imposta sostitutiva</span><b id="f-tax"></b></div>
+        <div class="rowv"><span>Contributi INPS</span><b id="f-con"></b></div>
+        <div class="rowv rowv--tot"><span>Totale prelievo</span><b id="f-tot"></b></div>
+        <div class="bar" id="f-bar"><i class="b-tax"></i><i class="b-con"></i></div>
+        <div class="rowv rowv--net"><span>Ti restano</span><b id="f-net"></b></div>
+        <p class="eff" id="f-eff"></p>
+        <p class="off-note" id="f-off"></p>
+      </div>
+      <div class="col" id="col-o">
+        <h2>Ordinario <small>IRPEF a scaglioni</small></h2>
+        <div class="rowv"><span>IRPEF e addizionali<span class="det" id="o-tax-d"></span></span><b id="o-tax"></b></div>
+        <div class="rowv"><span>Contributi INPS</span><b id="o-con"></b></div>
+        <div class="rowv rowv--tot"><span>Totale prelievo</span><b id="o-tot"></b></div>
+        <div class="bar" id="o-bar"><i class="b-tax"></i><i class="b-con"></i></div>
+        <div class="rowv rowv--net"><span>Ti restano</span><b id="o-net"></b></div>
+        <p class="eff" id="o-eff"></p>
+      </div>
+    </div>
+    <div class="r-key">
+      <span><i class="sw" style="background:var(--blue-2)"></i>Imposte</span>
+      <span><i class="sw" style="background:var(--blue-4)"></i>Contributi</span>
+      <span>Barre sulla stessa scala. «Ti restano» = incassi − costi reali − contributi − imposte</span>
+    </div>
+
+    <p class="iva" id="iva" hidden></p>
+
+    <details class="meth" id="meth">
+      <summary>Come è fatto il calcolo</summary>
+      <div id="meth-body"></div>
+    </details>
+  </section>
+
+  <footer class="r-foot">
+    <span>Fonte: Elaborazione Radar su DDL di bilancio 2027, TUIR, parametri INPS e dati MEF</span>
+    <span>Elaborazione Radar – QN</span>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var R = Radar, fmt = R.fmt, C = window.Contatore;
+  var e0 = function (v) { return fmt(Math.round(v), 0) + " €"; };
+  var p1 = function (v) { return fmt(v, 1).replace(/,0$/, "") + "%"; };
+  var pp = function (v) { return fmt(v, 2).replace(/0$/, "").replace(/,0$/, "") + "%"; };
+
+  R.loadCSV("../data/parametri-contatore.csv").then(function (rows) {
+    var P = C.params(rows, R.num);
+    var S = { incassi: 90000, attivita: "professionista", prev: "gs", costi: 15, startup: false, clienti: "imprese" };
+
+    // ---- controlli ----
+    var inc = document.getElementById("inc"), incNum = document.getElementById("inc-num");
+    var MIN = +inc.min, MAX = +inc.max;
+    var rngBox = document.getElementById("inc-rng");
+    var pos = function (v) { var f = (v - MIN) / (MAX - MIN); return "calc(9px + (100% - 18px) * " + f + ")"; };
+    [P.soglia_iva, P.soglia_irpef, P.uscita_immediata_irpef].forEach(function (v) {
+      var d = document.createElement("span"); d.className = "mk"; d.style.left = pos(v);
+      d.innerHTML = fmt(v / 1000, 0) + '<span class="mk__u">mila</span>'; rngBox.appendChild(d);
+    });
+    [[MIN, "start"], [MAX, "end"]].forEach(function (q) {
+      var d = document.createElement("span"); d.className = "mk mk--end";
+      d.style.left = q[1] === "start" ? "0" : "auto"; d.style.right = q[1] === "end" ? "0" : "auto"; d.style.transform = "none";
+      d.textContent = fmt(q[0] / 1000, 0) + "mila"; rngBox.appendChild(d);
+    });
+
+    var att = document.getElementById("att");
+    C.ATTIVITA.forEach(function (a) {
+      var o = document.createElement("option"); o.value = a.id; o.textContent = a.label; att.appendChild(o);
+    });
+
+    function setSeg(id, v) {
+      document.querySelectorAll("#" + id + " button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.v === v ? "true" : "false"); });
+    }
+    function bindSeg(id, key) {
+      document.querySelectorAll("#" + id + " button").forEach(function (b) {
+        b.addEventListener("click", function () { S[key] = b.dataset.v; setSeg(id, S[key]); update(); });
+      });
+    }
+    bindSeg("prev", "prev"); bindSeg("cli", "clienti");
+
+    function syncInc() {
+      inc.value = S.incassi; incNum.value = fmt(S.incassi, 0);
+      inc.style.setProperty("--p", ((S.incassi - MIN) / (MAX - MIN) * 100) + "%");
+    }
+    inc.addEventListener("input", function () { S.incassi = +inc.value; syncInc(); update(); });
+    incNum.addEventListener("focus", function () { incNum.value = String(S.incassi); incNum.select(); });
+    function readNum() {
+      var v = parseInt(incNum.value.replace(/[^\d]/g, ""), 10);
+      if (!isNaN(v)) { S.incassi = Math.max(MIN, Math.min(MAX, v)); }
+      syncInc(); update();
+    }
+    incNum.addEventListener("change", readNum);
+    incNum.addEventListener("keydown", function (ev) { if (ev.key === "Enter") { readNum(); incNum.blur(); } });
+
+    att.addEventListener("change", function () {
+      S.attivita = att.value;
+      // la previdenza predefinita segue l'attività
+      S.prev = C.ATTIVITA.filter(function (a) { return a.id === S.attivita; })[0].prev;
+      setSeg("prev", S.prev); update();
+    });
+    var costi = document.getElementById("costi"), costiV = document.getElementById("costi-v");
+    function syncCosti() { costi.value = S.costi; costiV.textContent = S.costi + "%"; costi.style.setProperty("--p", (S.costi / 60 * 100) + "%"); }
+    costi.addEventListener("input", function () { S.costi = +costi.value; syncCosti(); update(); });
+    document.getElementById("start").addEventListener("change", function (ev) { S.startup = ev.target.checked; update(); });
+
+    att.value = S.attivita; setSeg("prev", S.prev); setSeg("cli", S.clienti); syncInc(); syncCosti();
+
+    // ---- nota metodologica (parametri dal CSV) ----
+    document.getElementById("meth-body").innerHTML =
+      "<ul>" +
+      "<li><b>Forfettario (regole 2027).</b> Reddito = incassi × coefficiente di redditività dell'attività. Contributi sul reddito così calcolato; imponibile = reddito − contributi; imposta sostitutiva del " + P.aliquota_forfettario + "% (" + P.aliquota_startup + "% nei primi 5 anni di attività). Niente IRPEF, niente addizionali. Il forfettario vale fino a " + fmt(P.soglia_irpef, 0) + " euro di incassi; tra " + fmt(P.soglia_irpef, 0) + " e " + fmt(P.uscita_immediata_irpef, 0) + " euro si resta per l'anno in corso e si esce dal successivo; oltre " + fmt(P.uscita_immediata_irpef, 0) + " euro si esce subito. Per l'IVA la soglia resta a " + fmt(P.soglia_iva, 0) + " euro.</li>" +
+      "<li><b>Ordinario (regole 2027).</b> Reddito = incassi − costi reali indicati. Imponibile = reddito − contributi. IRPEF " + P.irpef_a1 + "% fino a " + fmt(P.irpef_s1, 0) + " euro, " + P.irpef_a2 + "% fino a " + fmt(P.irpef_s2, 0) + " (scaglione previsto per il 2027 dall'art. 9, comma 1, del DDL di bilancio), " + P.irpef_a3 + "% oltre. Detrazione per lavoro autonomo (art. 13, comma 5, TUIR) calcolata sull'imponibile: " + fmt(P.detr_max, 0) + " euro fino a " + fmt(P.detr_l1, 0) + "; " + fmt(P.detr_base, 0) + " + " + fmt(P.detr_var, 0) + " × (" + fmt(P.detr_l2, 0) + " − reddito) / " + fmt(P.detr_l2 - P.detr_l1, 0) + " fino a " + fmt(P.detr_l2, 0) + "; " + fmt(P.detr_base, 0) + " × (" + fmt(P.detr_l3, 0) + " − reddito) / " + fmt(P.detr_l3 - P.detr_l2, 0) + " fino a " + fmt(P.detr_l3, 0) + "; zero oltre.</li>" +
+      "<li><b>Addizionali.</b> Regionale " + pp(P.add_regionale) + " e comunale " + pp(P.add_comunale) + " dell'imponibile: sono le aliquote medie effettive calcolate sui dati MEF 2024 dei contribuenti con volume d'affari tra 75mila e 100mila euro (97,19 milioni di addizionale regionale e 38,50 milioni di comunale su 5.537,6 milioni di imponibile). Le aliquote vere dipendono da regione e comune.</li>" +
+      "<li><b>Gestione separata.</b> " + pp(P.aliquota_gs) + " del reddito, fino al massimale di " + fmt(P.massimale, 0) + " euro.</li>" +
+      "<li><b>Artigiani e commercianti.</b> Contributo fisso sul minimale di " + fmt(P.minimale_artcom, 0) + " euro (" + fmt(P.fisso_artigiani, 2) + " euro artigiani, " + fmt(P.fisso_commercianti, 2) + " euro commercianti), più il " + pp(P.aliquota_artigiani) + " (artigiani) o il " + pp(P.aliquota_commercianti) + " (commercianti) sul reddito oltre il minimale, che salgono al " + pp(P.aliquota_artigiani_2) + " e al " + pp(P.aliquota_commercianti_2) + " oltre " + fmt(P.fascia2_artcom, 0) + " euro, fino al massimale di " + fmt(P.massimale, 0) + " euro. Nel forfettario si applica la riduzione del " + P.riduzione_forfettari_artcom + "% (va chiesta all'INPS), sull'intero importo. Si usano i valori dei commercianti per commercio, ambulanti e intermediari, quelli degli artigiani per costruzioni, altre attività e professionisti iscritti a questa gestione.</li>" +
+      "<li><b>Parametri INPS:</b> valori 2026 (circolari INPS n. 8 e n. 14 del 2026), in attesa di quelli 2027. Massimale per chi ha iniziato a versare dal 1996.</li>" +
+      "<li><b>«Ti restano»</b> = incassi − costi reali − contributi − imposte, in entrambi i regimi: nel forfettario i costi non si deducono, ma si sostengono lo stesso. L'aliquota effettiva è il prelievo totale diviso per il reddito reale (incassi − costi reali).</li>" +
+      "</ul><p>Stima indicativa: non considera altre detrazioni, altri redditi, casse professionali private, acconti, crediti d'imposta e regole specifiche dei singoli settori. Non sostituisce il calcolo di un commercialista.</p>";
+
+    // ---- aggiornamento risultati ----
+    var bigNum = d3.select("#big-num"), lastBig = 0, started = false;
+    function animateBig(v, color) {
+      bigNum.classed("is-blue", color === "blue").classed("is-red", color === "red");
+      if (v == null) { bigNum.interrupt().text("–"); lastBig = 0; return; }
+      var from = lastBig; lastBig = v;
+      if (R.reduced || !started) { bigNum.text(e0(v)); return; }
+      bigNum.interrupt().transition().duration(R.DUR).ease(R.EASE).tween("text", function () {
+        var node = this, i = d3.interpolateNumber(from, v);
+        return function (t) { node.textContent = e0(i(t)); };
+      });
+    }
+    function setBar(id, tax, con, scale) {
+      var b = document.getElementById(id).children;
+      b[0].style.width = (scale ? tax / scale * 100 : 0) + "%";
+      b[1].style.width = (scale ? con / scale * 100 : 0) + "%";
+      b[0].style.background = "var(--blue-2)"; b[1].style.background = "var(--blue-4)";
+    }
+    var txt = function (id, s) { document.getElementById(id).textContent = s; };
+
+    function update() {
+      var r = C.calcola(P, S), F = r.forf, O = r.ord;
+      var realIncome = S.incassi - r.costiReali;
+
+      // stato del regime
+      var st = "";
+      if (r.fascia === "pieno") st = '<p><span class="badge badge--blue">Forfettario pieno</span>Fino a ' + fmt(P.soglia_iva, 0) + ' euro: imposta sostitutiva e niente IVA in fattura.</p>';
+      else if (r.fascia === "doppio") st = '<p><span class="badge badge--red">Doppio binario</span>Resti forfettario per imposte e contributi, ma oltre ' + fmt(P.soglia_iva, 0) + ' euro applichi l\'IVA in fattura.</p><p class="sub">Con le regole 2026, da qui passeresti al regime ordinario (dall\'anno successivo).</p>';
+      else if (r.fascia === "uscita") st = '<p><span class="badge badge--grey">Ultimo anno</span>Resti forfettario per quest\'anno, ma dal prossimo passi all\'ordinario. Oltre ' + fmt(P.uscita_immediata_iva, 0) + ' euro l\'IVA è ordinaria da subito.</p>';
+      else st = '<p><span class="badge badge--grey">Fuori dal forfettario</span>Oltre ' + fmt(P.uscita_immediata_irpef, 0) + ' euro il forfettario non è disponibile: si esce subito e si applica il regime ordinario.</p>';
+      document.getElementById("status").innerHTML = st;
+
+      // big number
+      if (F.disponibile) {
+        var s = r.risparmio;
+        animateBig(Math.abs(s), s >= 0 ? "blue" : "red");
+        txt("big-label", s >= 0 ? "in più ti restano in un anno con il forfettario rispetto al regime ordinario" : "in più ti restano in un anno con il regime ordinario: con questi costi reali il forfettario non conviene");
+      } else {
+        animateBig(null, null);
+        txt("big-label", "nessun confronto possibile: con questi incassi il forfettario non è disponibile");
+      }
+
+      // colonne
+      txt("att-hint", "Coefficiente di redditività nel forfettario: " + r.coeff + "% degli incassi");
+      txt("f-sub", "coefficiente " + r.coeff + "%, imposta al " + F.aliquota + "%");
+      txt("f-tax-l", "Imposta sostitutiva (" + F.aliquota + "%)");
+      var fe = F.disponibile ? e0 : function () { return "–"; };
+      txt("f-tax", fe(F.imposte)); txt("f-con", fe(F.contributi)); txt("f-tot", fe(F.prelievo)); txt("f-net", fe(F.restano));
+      txt("f-eff", F.disponibile ? "Aliquota effettiva sul reddito reale: " + p1(realIncome > 0 ? F.prelievo / realIncome * 100 : 0) : "");
+      txt("o-tax", e0(O.imposte));
+      txt("o-tax-d", "IRPEF " + e0(O.irpef) + " + addizionali " + e0(O.addReg + O.addCom));
+      txt("o-con", e0(O.contributi)); txt("o-tot", e0(O.prelievo)); txt("o-net", e0(O.restano));
+      txt("o-eff", "Aliquota effettiva sul reddito reale: " + p1(realIncome > 0 ? O.prelievo / realIncome * 100 : 0));
+      var colF = document.getElementById("col-f");
+      colF.classList.toggle("is-off", !F.disponibile);
+      colF.setAttribute("aria-disabled", F.disponibile ? "false" : "true");
+      txt("f-off", F.disponibile ? "" : "Non disponibile: oltre " + fmt(P.uscita_immediata_irpef, 0) + " euro di incassi si esce subito dal forfettario.");
+
+      var scale = Math.max(F.disponibile ? F.prelievo : 0, O.prelievo);
+      setBar("f-bar", F.disponibile ? F.imposte : 0, F.disponibile ? F.contributi : 0, scale);
+      setBar("o-bar", O.imposte, O.contributi, scale);
+
+      // nota IVA
+      var iva = document.getElementById("iva");
+      if (S.incassi > P.soglia_iva) {
+        iva.hidden = false;
+        iva.textContent = S.clienti === "privati"
+          ? "Con l'IVA al " + P.iva + "% il prezzo per il cliente sale, oppure a parità di prezzo restano " + fmt(Math.round(r.ivaScorporo), 0) + " euro in meno."
+          : "L'IVA la recuperano i clienti: per te pesano soprattutto gli adempimenti.";
+      } else iva.hidden = true;
+      R.scheduleHeight();
+    }
+
+    update();
+    // il big number conta fino al valore al primo ingresso nel viewport, poi a ogni cambio
+    var bigEl = document.getElementById("big");
+    if (!R.reduced) {
+      var target = lastBig; bigNum.text(e0(0)); lastBig = 0;
+      R.onFirstView(bigEl, function () { started = true; var r = C.calcola(P, S); if (r.risparmio != null) animateBig(Math.abs(r.risparmio), r.risparmio >= 0 ? "blue" : "red"); });
+    } else started = true;
+    document.getElementById("meth").addEventListener("toggle", R.scheduleHeight);
+  }).catch(function (e) { R.fail("#ctl", e); });
+})();
+</script>
+</body>
+</html>

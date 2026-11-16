@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le soglie IRPEF e IVA del forfettario – Radar QN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,700&display=swap">
+<link rel="stylesheet" href="../assets/radar.css">
+<style>
+  .row-title { font-size: 14px; font-weight: 600; fill: var(--ink); }
+  .row-title--muted { fill: var(--ink-2); }
+  .group-title { font-size: 12px; font-weight: 600; fill: var(--ink-2); letter-spacing: .02em; text-transform: uppercase; }
+  .seg-label { font-size: 12px; fill: var(--ink-2); paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+  .thr line { stroke: var(--ink-2); stroke-width: 0.75; stroke-dasharray: 2 3; shape-rendering: crispEdges; }
+  .thr text { font-size: 12px; font-weight: 600; fill: var(--ink); paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+  .sw--hatch-b { background: repeating-linear-gradient(135deg, var(--blue-2) 0 2px, var(--bg) 2px 4px); border: 1px solid var(--blue-2); }
+  .sw--hatch-g { background: repeating-linear-gradient(135deg, var(--grey-3) 0 2px, var(--bg) 2px 4px); border: 1px solid var(--grey-3); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="../assets/radar.js"></script>
+</head>
+<body>
+<main class="radar">
+  <header>
+    <h1 class="r-title">Una soglia per le tasse, un'altra per l'IVA</h1>
+    <p class="r-sub">Cosa succede a chi ha una partita IVA in base agli incassi annui, con le regole 2026 e con la manovra 2027</p>
+  </header>
+
+  <figure class="r-chart" id="chart" style="margin-top:22px"></figure>
+  <div class="r-key" id="key"></div>
+
+  <footer class="r-foot">
+    <span>Fonte: DDL di bilancio 2027, art. 9; Dossier Servizio Studi Senato-Camera n. 793</span>
+    <span>Elaborazione Radar – QN</span>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var R = Radar, fmt = R.fmt;
+  // nomi delle righe del CSV come appaiono nel grafico
+  var NOMI = { "Regole 2026": "Regole 2026", "IRPEF 2027": "Imposte sui redditi (IRPEF)", "IVA 2027": "IVA" };
+  var FILL = {
+    old: { forfettario: "var(--grey-4)", uscita_anno_dopo: "url(#hatch-g)", ordinario: "var(--grey-2)" },
+    nuovo: { forfettario: "var(--blue-2)", uscita_anno_dopo: "url(#hatch-b)", ordinario: "var(--grey-3)", doppio_binario: "var(--red-2)" }
+  };
+  var STROKE = { "url(#hatch-b)": "var(--blue-2)", "url(#hatch-g)": "var(--grey-3)" };
+  var STATO = {
+    forfettario: "Forfettario o esenzione",
+    uscita_anno_dopo: "Esci dall'anno successivo",
+    ordinario: "Regime ordinario o uscita dal regime",
+    doppio_binario: "Doppio binario"
+  };
+
+  R.loadCSV("../data/doppio-binario.csv").then(function (rows) {
+    var segs = rows.map(function (r) {
+      return { riga: r.riga, da: R.num(r.da), a: R.num(r.a), stato: r.stato, label: r.etichetta };
+    });
+    var righe = Array.from(new Set(segs.map(function (s) { return s.riga; })));
+    var xMax = d3.max(segs, function (s) { return s.a; });
+    // soglie = confini interni tra segmenti
+    var soglie = Array.from(new Set(segs.map(function (s) { return s.da; }).filter(function (v) { return v > 0; }))).sort(d3.ascending);
+    var isOld = function (riga) { return /2026/.test(riga); };
+    var mila = function (v) { return fmt(v / 1000, 0) + "mila"; };
+    var rangeLong = function (s) {
+      return s.da === 0 ? "fino a " + fmt(s.a, 0) + " euro" : s.a === xMax ? "oltre " + fmt(s.da, 0) + " euro" : "da " + fmt(s.da, 0) + " a " + fmt(s.a, 0) + " euro";
+    };
+    var rangeShort = function (s) {
+      return s.da === 0 ? "Fino a " + mila(s.a) : s.a === xMax ? "Oltre " + mila(s.da) : "Da " + fmt(s.da / 1000, 0) + " a " + mila(s.a);
+    };
+    var fillOf = function (s) { return FILL[isOld(s.riga) ? "old" : "nuovo"][s.stato]; };
+
+    // chiave
+    d3.select("#key").html(
+      '<span><i class="sw" style="background:var(--blue-2)"></i>Forfettario o esenzione</span>' +
+      '<span><i class="sw" style="background:var(--red-2)"></i>Doppio binario: forfettario per le tasse, IVA in fattura</span>' +
+      '<span><i class="sw sw--hatch-b"></i>Resti quest\'anno, esci dall\'anno successivo</span>' +
+      '<span><i class="sw" style="background:var(--grey-3)"></i>Regime ordinario</span>' +
+      '<span><i class="sw" style="background:var(--grey-4)"></i>Regole 2026</span>');
+
+    var host = document.getElementById("chart");
+    var tip = R.tooltip(host);
+    var clear = function () {};
+    R.dismissOutside(host, function () { tip.hide(); clear(); });
+
+    R.responsive(host, function (W, phase) {
+      var narrow = R.isNarrow(W);
+      var m = { top: 40, right: narrow ? 2 : 4, left: 0 };
+      var w = W - m.left - m.right;
+      var x = d3.scaleLinear().domain([0, xMax]).range([0, w]);
+      var BH = narrow ? 24 : 28, GAP = 2;
+
+      d3.select(host).select("svg").remove();
+      var red = segs.find(function (s) { return s.stato === "doppio_binario"; });
+      var svg = d3.select(host).insert("svg", ".r-tip").attr("width", W).attr("role", "img")
+        .attr("aria-label", "Schema delle soglie del regime forfettario. Con la manovra 2027 la soglia per le imposte sui redditi sale a " +
+          fmt(soglie[1], 0) + " euro, con uscita immediata oltre " + fmt(soglie[2], 0) + ", mentre per l'IVA resta a " + fmt(red.da, 0) +
+          " euro: tra " + fmt(red.da, 0) + " e " + fmt(red.a, 0) + " euro si resta forfettari per le tasse ma con l'IVA in fattura.");
+      svg.append("title").text("Le soglie del regime forfettario per IRPEF e IVA, regole 2026 e 2027");
+      var defs = svg.append("defs");
+      [["hatch-b", "var(--blue-2)"], ["hatch-g", "var(--grey-3)"]].forEach(function (p) {
+        var pat = defs.append("pattern").attr("id", p[0]).attr("patternUnits", "userSpaceOnUse")
+          .attr("width", 6).attr("height", 6).attr("patternTransform", "rotate(45)");
+        pat.append("rect").attr("width", 6).attr("height", 6).style("fill", "var(--bg)");
+        pat.append("line").attr("x1", 1.5).attr("x2", 1.5).attr("y1", 0).attr("y2", 6).style("stroke", p[1]).style("stroke-width", 3);
+      });
+      var g = svg.append("g").attr("transform", "translate(" + m.left + "," + m.top + ")");
+      var gThr = g.append("g").attr("class", "thr");
+      var gRows = g.append("g");
+
+      var y = 0, allSegs = [], barY = {};
+      righe.forEach(function (riga, ri) {
+        if (ri === 1) {
+          y += 6;
+          gRows.append("text").attr("class", "group-title").attr("x", 0).attr("y", y).text("Con la manovra 2027");
+          y += 22;
+        }
+        var old = isOld(riga);
+        gRows.append("text").attr("class", "row-title" + (old ? " row-title--muted" : "")).attr("x", 0).attr("y", y + 2).text(NOMI[riga] || riga);
+        var by = y + 10;
+        barY[riga] = by;
+        var rs = segs.filter(function (s) { return s.riga === riga; });
+        rs.forEach(function (s) { s.y = by; allSegs.push(s); });
+
+        // etichette dei segmenti
+        var ly = by + BH + 16, maxH = 0;
+        if (narrow) {
+          rs.forEach(function (s) {
+            var gl = gRows.append("g").attr("class", "seg-lab").datum(s);
+            var f = fillOf(s);
+            gl.append("rect").attr("x", 0).attr("y", ly - 9).attr("width", 10).attr("height", 10).attr("rx", 2)
+              .style("fill", f).style("stroke", STROKE[f] || "none").style("stroke-width", 1);
+            gl.append("text").attr("class", "seg-label").attr("x", 16).attr("y", ly)
+              .style("fill", s.stato === "doppio_binario" ? "var(--red-2)" : "var(--ink)").attr("font-weight", 600).text(rangeShort(s));
+            var t2 = gl.append("text").attr("class", "seg-label").attr("x", 16).attr("y", ly + 16).text(s.label);
+            R.wrap(t2, w - 16, 1.3);
+            ly += 16 + 15.6 * ((+t2.attr("data-lines") || 1) - 1);
+            ly += 20;
+          });
+          y = ly + 6;
+        } else {
+          rs.forEach(function (s) {
+            var sw = x(s.a) - x(s.da) - 8;
+            var t = gRows.append("text").attr("class", "seg-label").datum(s)
+              .attr("x", x(s.da)).attr("y", ly).style("fill", s.stato === "doppio_binario" ? "var(--red-2)" : null)
+              .style("font-weight", s.stato === "doppio_binario" ? 600 : null).text(s.label);
+            R.wrap(t, sw, 1.3);
+            maxH = Math.max(maxH, (+t.attr("data-lines") || 1));
+          });
+          y = ly + (maxH - 1) * 15.6 + 26;
+        }
+      });
+      var H = y + m.top + 2;
+      svg.attr("height", H);
+
+      // linee verticali delle soglie
+      var top = -m.top + 14;
+      soglie.forEach(function (v, i) {
+        var xx = Math.round(x(v)) + 0.5;
+        gThr.append("line").attr("x1", xx).attr("x2", xx).attr("y1", top + 4).attr("y2", y - 12);
+        gThr.append("text").attr("x", xx).attr("y", top).attr("text-anchor", "middle")
+          .text(narrow ? fmt(v / 1000, 0) : fmt(v / 1000, 0) + "mila euro");
+      });
+      // su mobile le soglie sono in migliaia: lo dice un'etichetta a sinistra
+      if (narrow) gThr.append("text").attr("x", 0).attr("y", top).style("font-weight", 400).style("fill", "var(--ink-2)").text("Soglie, in migliaia di euro");
+
+      // barre
+      var bars = g.append("g").selectAll("path").data(allSegs).join("path").attr("class", "mark")
+        .style("fill", fillOf)
+        .style("stroke", function (s) { return STROKE[fillOf(s)] || "none"; })
+        .style("stroke-width", 1);
+      function segD(s, t) {
+        var x0 = x(s.da) + (s.da > 0 ? GAP / 2 : 0), x1 = x(s.a) - (s.a < xMax ? GAP / 2 : 0);
+        var ww = Math.max(0, (x1 - x0) * t);
+        // angoli smussati solo sul lato libero (fine dell'ultimo segmento)
+        return s.a === xMax ? R.barPathH(x0, s.y, ww, BH, 2) : "M" + x0 + "," + s.y + "h" + ww + "v" + BH + "h" + (-ww) + "Z";
+      }
+      R.enter(bars, phase,
+        function (sel) { sel.attr("d", function (s) { return segD(s, 0); }); },
+        function (sel) { sel.attrTween("d", function (s) { return function (t) { return segD(s, t); }; }); },
+        null);
+
+      // annotazione sul segmento rosso
+      var an = g.append("g").attr("class", "anno");
+      var cx = (x(red.da) + x(red.a)) / 2, cy = red.y;
+      var ty = cy - 22;
+      var at = an.append("text").attr("y", ty + 4).attr("font-weight", 600).text("Il «forfettario spezzatino»");
+      var tw = at.node().getComputedTextLength();
+      var right = cx + 14 + tw <= w;
+      at.attr("x", right ? cx + 10 : cx - 10).attr("text-anchor", right ? "start" : "end");
+      an.append("path").attr("d", "M" + (right ? cx + 6 : cx - 6) + "," + ty + "H" + cx + "V" + (cy - 3));
+      an.append("circle").attr("cx", cx).attr("cy", cy - 3).attr("r", 1.75);
+      R.enter(an, phase, function (s) { s.style("opacity", 0); }, function (s) { s.style("opacity", 1); }, R.DUR * 0.8);
+
+      // interazione
+      var labs = gRows.selectAll(".seg-label, .seg-lab");
+      clear = function () { bars.classed("is-dimmed", false); };
+      g.append("g").selectAll("rect").data(allSegs).join("rect").attr("class", "hit")
+        .attr("x", function (s) { return x(s.da); }).attr("width", function (s) { return x(s.a) - x(s.da); })
+        .attr("y", function (s) { return s.y - 4; }).attr("height", BH + 8)
+        .on("pointerenter pointerdown", function (ev, s) {
+          bars.classed("is-dimmed", function (q) { return q !== s; });
+          var note = s.stato === "uscita_anno_dopo" ? "Si resta nel forfettario per l'anno in corso, si passa all'ordinario dall'anno successivo"
+            : s.stato === "doppio_binario" ? "Il «forfettario spezzatino»: imposta sostitutiva sul reddito, ma IVA da applicare in fattura" : null;
+          tip.show(R.tipHTML({ title: s.label, value: rangeLong(s).replace(/^./, function (c) { return c.toUpperCase(); }),
+            rows: [[NOMI[s.riga] + (isOld(s.riga) ? "" : ", 2027"), STATO[s.stato]]], note: note }),
+            (x(s.da) + x(s.a)) / 2 + m.left, s.y + m.top);
+        })
+        .on("pointerleave", function (ev) { if (ev.pointerType === "mouse") { tip.hide(); clear(); } });
+    });
+  }).catch(function (e) { R.fail("#chart", e); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Il forfettario per settore di attività – Radar QN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,700&display=swap">
+<link rel="stylesheet" href="../assets/radar.css">
+<style>.cat-label { font-size: 13px; fill: var(--ink); }</style>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="../assets/radar.js"></script>
+</head>
+<body>
+<main class="radar">
+  <header>
+    <h1 class="r-title">Il forfettario è un regime da professionisti</h1>
+    <p class="r-sub">Contribuenti nei regimi fiscali agevolati per settore di attività, anno d'imposta 2024</p>
+  </header>
+
+  <figure class="r-chart" id="chart"></figure>
+  <p class="r-note" id="note"></p>
+
+  <footer class="r-foot">
+    <span>Fonte: MEF – Dipartimento delle Finanze</span>
+    <span>Elaborazione Radar – QN</span>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var R = Radar, fmt = R.fmt, f0 = function (v) { return fmt(v, 0); };
+
+  R.loadCSV("../data/settori.csv").then(function (rows) {
+    var all = rows.map(function (r) {
+      return { k: r.settore, v: R.num(r.contribuenti), red: R.num(r.reddito_mln), imp: R.num(r.imposta_sostitutiva_mln), medio: R.num(r.reddito_medio_euro) };
+    });
+    var altri = all.filter(function (d) { return /^altri settori/i.test(d.k); });
+    var data = all.filter(function (d) { return altri.indexOf(d) < 0; }).sort(function (a, b) { return b.v - a.v; }).concat(altri);
+    var TOT = d3.sum(all, function (d) { return d.v; });   // 1.996.469 contribuenti nei regimi agevolati
+    var top = data[0];
+    data.forEach(function (d) { d.share = d.v / TOT; d.other = altri.indexOf(d) >= 0; });
+    // controllo del titolo: la prima barra deve essere quella dei professionisti e staccare la seconda
+    if (!/professioni/i.test(top.k) || top.v < 2 * data[1].v) console.warn("Titolo da ricontrollare");
+
+    d3.select("#note").text("I contribuenti sono quelli dei regimi fiscali agevolati, " + f0(TOT) +
+      " in totale. Il reddito medio è calcolato su tutti i contribuenti del settore. Ammontari in milioni di euro.");
+
+    var host = document.getElementById("chart");
+    var tip = R.tooltip(host);
+    var clear = function () {};
+    R.dismissOutside(host, function () { tip.hide(); clear(); });
+    var colorOf = function (d) { return d === top ? "var(--red)" : d.other ? "var(--grey)" : "var(--blue)"; };
+
+    R.responsive(host, function (W, phase) {
+      var narrow = R.isNarrow(W);
+      // desktop: nomi a sinistra; mobile: nomi sopra le barre (nessun taglio delle etichette)
+      var labW = narrow ? 0 : 220, labH = narrow ? 17 : 0;
+      var bh = narrow ? 16 : 20, row = narrow ? bh + labH + 14 : 30;
+      var annoH = narrow ? 34 : 6;
+      var valW = 66;
+      var H = annoH + row * data.length;
+      var x = d3.scaleLinear().domain([0, top.v]).range([0, W - labW - valW]);
+
+      d3.select(host).select("svg").remove();
+      var svg = d3.select(host).insert("svg", ".r-tip").attr("width", W).attr("height", H).attr("role", "img")
+        .attr("aria-label", "Grafico a barre: " + top.k + " è il primo settore con " + f0(top.v) + " contribuenti, il " + R.pct(top.share) +
+          " del totale; seguono " + data.slice(1, 3).map(function (d) { return d.k + " (" + f0(d.v) + ")"; }).join(" e ") + ".");
+      svg.append("title").text("Contribuenti nei regimi fiscali agevolati per settore, 2024");
+      var g = svg.append("g").attr("transform", "translate(" + labW + "," + annoH + ")");
+      var yy = function (i) { return i * row + labH + (narrow ? 0 : (row - bh) / 2); };
+
+      var labs = g.append("g").selectAll("text").data(data).join("text").attr("class", "cat-label mark")
+        .attr("x", narrow ? 0 : -labW).attr("y", function (d, i) { return narrow ? yy(i) - 5 : yy(i) + bh / 2; })
+        .attr("dy", narrow ? 0 : "0.35em")
+        .style("fill", function (d) { return d.other ? "var(--ink-2)" : d === top ? "var(--red)" : null; })
+        .style("font-weight", function (d) { return d === top ? 600 : null; })
+        .text(function (d) { return d.k; });
+
+      var bars = g.append("g").selectAll("path").data(data).join("path").attr("class", "mark").style("fill", colorOf);
+      R.enter(bars, phase,
+        function (s) { s.attr("d", function (d, i) { return R.barPathH(0, yy(i), 0, bh, 2); }); },
+        function (s) { s.attrTween("d", function (d) { var i = data.indexOf(d); return function (t) { return R.barPathH(0, yy(i), x(d.v) * t, bh, 2); }; }); });
+
+      var vals = g.append("g").selectAll("text").data(data).join("text").attr("class", "val-label mark")
+        .attr("x", function (d) { return x(d.v) + 6; }).attr("y", function (d, i) { return yy(i) + bh / 2; }).attr("dy", "0.35em");
+      vals.each(function (d) { R.countUp(d3.select(this), d.v, f0, phase); });
+
+      // annotazione: quota del primo settore
+      var an = g.append("g").attr("class", "anno");
+      var share = fmt(top.share * 100, 1).replace(/,0$/, "");
+      var txt = "Il " + share + "% di tutti i forfettari";
+      if (narrow) {
+        // il pallino va oltre la fine del nome del settore, così la linea non lo attraversa
+        var lw = labs.filter(function (d) { return d === top; }).node().getComputedTextLength();
+        var dx = Math.min(x(top.v) - 4, lw + 10);
+        var at = an.append("text").attr("x", 0).attr("y", -annoH + 13).text(txt);
+        var tw = at.node().getComputedTextLength();
+        an.append("path").attr("d", "M" + (tw + 4) + "," + (-annoH + 9) + "H" + dx + "V" + (yy(0) + 1));
+        an.append("circle").attr("cx", dx).attr("cy", yy(0) + 1).attr("r", 1.75);
+      } else {
+        var ty = yy(0) + bh + 22;
+        an.append("text").attr("x", x(top.v) * 0.62 + 8).attr("y", ty + 4).text(txt);
+        an.append("path").attr("d", "M" + (x(top.v) * 0.62 + 4) + "," + ty + "H" + x(top.v) * 0.62 + "V" + (yy(0) + bh - 1));
+        an.append("circle").attr("cx", x(top.v) * 0.62).attr("cy", yy(0) + bh - 1).attr("r", 1.75);
+      }
+      R.enter(an, phase, function (s) { s.style("opacity", 0); }, function (s) { s.style("opacity", 1); }, R.DUR * 0.8);
+
+      clear = function () { bars.classed("is-dimmed", false); vals.classed("is-dimmed", false); labs.classed("is-dimmed", false); };
+      g.append("g").selectAll("rect").data(data).join("rect").attr("class", "hit")
+        .attr("x", -labW).attr("width", W).attr("y", function (d, i) { return i * row + (narrow ? 0 : 0); }).attr("height", row)
+        .on("pointerenter pointerdown", function (ev, d) {
+          bars.classed("is-dimmed", function (q) { return q !== d; });
+          vals.classed("is-dimmed", function (q) { return q !== d; });
+          labs.classed("is-dimmed", function (q) { return q !== d; });
+          var i = data.indexOf(d);
+          tip.show(R.tipHTML({
+            title: d.k, value: f0(d.v), unit: "contribuenti",
+            rows: [
+              ["Quota sul totale", R.pct(d.share)],
+              ["Reddito soggetto a imposta sostitutiva", fmt(d.red, 1) + " mln"],
+              ["Imposta sostitutiva pagata", fmt(d.imp, 1) + " mln"],
+              ["Reddito medio per contribuente", f0(d.medio) + " €"]
+            ],
+            note: "Reddito medio calcolato su tutti i contribuenti del settore"
+          }), Math.min(x(d.v) + labW, W - 40), yy(i) + annoH);
+        })
+        .on("pointerleave", function (ev) { if (ev.pointerType === "mouse") { tip.hide(); clear(); } });
+    });
+  }).catch(function (e) { R.fail("#chart", e); });
+})();
+</script>
+</body>
+</html>

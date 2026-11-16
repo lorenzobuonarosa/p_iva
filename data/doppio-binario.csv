@@ -1,0 +1,10 @@
+riga;da;a;stato;etichetta
+Regole 2026;0;85000;forfettario;Forfettario: imposta al 15% e niente IVA
+Regole 2026;85000;100000;uscita_anno_dopo;Resti quest'anno, esci dal prossimo
+Regole 2026;100000;130000;ordinario;Esci subito: IRPEF a scaglioni e IVA
+IRPEF 2027;0;100000;forfettario;Imposta sostitutiva al 15% (5% per i primi 5 anni)
+IRPEF 2027;100000;115000;uscita_anno_dopo;Resti quest'anno, esci dal prossimo
+IRPEF 2027;115000;130000;ordinario;Esci subito: IRPEF a scaglioni
+IVA 2027;0;85000;forfettario;Niente IVA in fattura
+IVA 2027;85000;100000;doppio_binario;IVA in fattura, ma resti forfettario per le tasse
+IVA 2027;100000;130000;ordinario;IVA ordinaria

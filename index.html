@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Partite IVA e forfettario – dataviz Radar QN</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,700&display=swap">
+<link rel="stylesheet" href="assets/radar.css">
+<style>
+  .radar { max-width: 1180px; }
+  .card { border-top: 1px solid var(--ink); padding: 18px 0 30px; }
+  .card h2 { font-family: var(--serif); font-size: 24px; margin: 0 0 4px; }
+  .meta { font-size: 13px; color: var(--ink-2); margin: 0 0 14px; }
+  .meta a { color: var(--blue); }
+  .prev { display: flex; gap: 24px; align-items: flex-start; }
+  .prev > div:first-child { flex: 1 1 760px; min-width: 0; }
+  .prev iframe { border: 1px solid var(--rule); display: block; background: var(--bg); }
+  .lab { display: block; font-size: 12px; font-weight: 600; color: var(--ink-2); margin: 0 0 6px; }
+  @media (max-width: 1150px) { .mob { display: none; } }
+  .snip { margin-top: 12px; }
+  .snip textarea { width: 100%; font: 12px/1.4 ui-monospace, Menlo, monospace; color: var(--ink); background: var(--tip-bg); border: 1px solid var(--rule); padding: 8px; }
+  .copy { font: 600 13px var(--sans); background: var(--ink); color: var(--bg); border: 0; padding: 7px 12px; border-radius: 2px; cursor: pointer; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<main class="radar">
+  <h1 class="r-title">Partite IVA e forfettario a 100mila euro</h1>
+  <p class="r-sub">Cinque dataviz Radar per il pezzo sul DDL di bilancio 2027 (A.C. 3174-bis, art. 9). Ogni snippet contiene l'iframe e lo script per altezza e tema: se in un articolo ci sono più dataviz, lo script può restare in ognuna (grazie al controllo <code>__radarQNv2</code> non si ripete) oppure si tiene una volta sola.</p>
+
+  <section class="card">
+    <h2>Una soglia per le tasse, un&#x27;altra per l&#x27;IVA</h2>
+    <p class="meta"><a href="doppio-binario/">doppio-binario/</a> · CSV in <code>data/</code> · altezza iniziale 690px</p>
+    <div class="prev">
+      <div><span class="lab">Desktop</span><iframe src="doppio-binario/" style="width:100%;max-width:760px;height:690px" title="Schema delle soglie IRPEF e IVA del forfettario – anteprima desktop" loading="lazy"></iframe></div>
+      <div class="mob"><span class="lab">Mobile, 360px</span><iframe src="doppio-binario/" style="width:360px;height:1090px" title="Schema delle soglie IRPEF e IVA del forfettario – anteprima mobile" loading="lazy"></iframe></div>
+    </div>
+    <div class="snip"><button type="button" class="copy">Copia lo snippet per il CMS</button><textarea readonly rows="5">&lt;iframe src=&quot;https://lorenzobuonarosa.github.io/p_iva/doppio-binario/&quot; width=&quot;100%&quot; height=&quot;690&quot; frameborder=&quot;0&quot; scrolling=&quot;no&quot; title=&quot;Schema delle soglie IRPEF e IVA del forfettario&quot;&gt;&lt;/iframe&gt;
+&lt;script&gt;
+(function(){if(window.__radarQNv2)return;window.__radarQNv2=1;var O=&quot;https://lorenzobuonarosa.github.io&quot;;var MQ=window.matchMedia(&quot;(prefers-color-scheme:dark)&quot;);function frames(){return Array.prototype.filter.call(document.getElementsByTagName(&quot;iframe&quot;),function(f){return(f.getAttribute(&quot;src&quot;)||&quot;&quot;).indexOf(O+&quot;/&quot;)===0;});}function theme(){var t=document.documentElement.getAttribute(&quot;data-theme&quot;);return t===&quot;dark&quot;||t===&quot;light&quot;?t:(MQ.matches?&quot;dark&quot;:&quot;light&quot;);}function bgOf(el){for(;el&amp;&amp;el.nodeType===1;el=el.parentElement){var c=getComputedStyle(el).backgroundColor;if(c&amp;&amp;c !==&quot;transparent&quot;&amp;&amp;!/rgba\([^)]*,\s*0\)$/.test(c))return c;}return null;}function send(f){try{f.contentWindow.postMessage({sentinel:&quot;radar-qn&quot;,type:&quot;theme&quot;,theme:theme(),bg:bgOf(f.parentElement)},O);}catch(e){}}function sendAll(){frames().forEach(send);}window.addEventListener(&quot;message&quot;,function(e){if(e.origin !==O)return;var d=e.data;if(!d||d.sentinel !==&quot;radar-qn&quot;||d.type !==&quot;height&quot;)return;frames().forEach(function(f){if(f.contentWindow !==e.source)return;var h=Math.ceil(+d.height);if(h &gt; 0&amp;&amp;20000 &gt; h)f.style.height=h+&quot;px&quot;;send(f);});});new MutationObserver(function(){sendAll();setTimeout(sendAll,400);}).observe(document.documentElement,{attributes:true,attributeFilter:[&quot;data-theme&quot;]});if(MQ.addEventListener)MQ.addEventListener(&quot;change&quot;,sendAll);})();
+&lt;/script&gt;</textarea></div>
+  </section>
+  <section class="card">
+    <h2>Quasi un forfettario su due incassa meno di 20mila euro l&#x27;anno</h2>
+    <p class="meta"><a href="fasce-ricavi/">fasce-ricavi/</a> · CSV in <code>data/</code> · altezza iniziale 560px</p>
+    <div class="prev">
+      <div><span class="lab">Desktop</span><iframe src="fasce-ricavi/" style="width:100%;max-width:760px;height:560px" title="I forfettari per fascia di ricavi – anteprima desktop" loading="lazy"></iframe></div>
+      <div class="mob"><span class="lab">Mobile, 360px</span><iframe src="fasce-ricavi/" style="width:360px;height:960px" title="I forfettari per fascia di ricavi – anteprima mobile" loading="lazy"></iframe></div>
+    </div>
+    <div class="snip"><button type="button" class="copy">Copia lo snippet per il CMS</button><textarea readonly rows="5">&lt;iframe src=&quot;https://lorenzobuonarosa.github.io/p_iva/fasce-ricavi/&quot; width=&quot;100%&quot; height=&quot;560&quot; frameborder=&quot;0&quot; scrolling=&quot;no&quot; title=&quot;I forfettari per fascia di ricavi&quot;&gt;&lt;/iframe&gt;
+&lt;script&gt;
+(function(){if(window.__radarQNv2)return;window.__radarQNv2=1;var O=&quot;https://lorenzobuonarosa.github.io&quot;;var MQ=window.matchMedia(&quot;(prefers-color-scheme:dark)&quot;);function frames(){return Array.prototype.filter.call(document.getElementsByTagName(&quot;iframe&quot;),function(f){return(f.getAttribute(&quot;src&quot;)||&quot;&quot;).indexOf(O+&quot;/&quot;)===0;});}function theme(){var t=document.documentElement.getAttribute(&quot;data-theme&quot;);return t===&quot;dark&quot;||t===&quot;light&quot;?t:(MQ.matches?&quot;dark&quot;:&quot;light&quot;);}function bgOf(el){for(;el&amp;&amp;el.nodeType===1;el=el.parentElement){var c=getComputedStyle(el).backgroundColor;if(c&amp;&amp;c !==&quot;transparent&quot;&amp;&amp;!/rgba\([^)]*,\s*0\)$/.test(c))return c;}return null;}function send(f){try{f.contentWindow.postMessage({sentinel:&quot;radar-qn&quot;,type:&quot;theme&quot;,theme:theme(),bg:bgOf(f.parentElement)},O);}catch(e){}}function sendAll(){frames().forEach(send);}window.addEventListener(&quot;message&quot;,function(e){if(e.origin !==O)return;var d=e.data;if(!d||d.sentinel !==&quot;radar-qn&quot;||d.type !==&quot;height&quot;)return;frames().forEach(function(f){if(f.contentWindow !==e.source)return;var h=Math.ceil(+d.height);if(h &gt; 0&amp;&amp;20000 &gt; h)f.style.height=h+&quot;px&quot;;send(f);});});new MutationObserver(function(){sendAll();setTimeout(sendAll,400);}).observe(document.documentElement,{attributes:true,attributeFilter:[&quot;data-theme&quot;]});if(MQ.addEventListener)MQ.addEventListener(&quot;change&quot;,sendAll);})();
+&lt;/script&gt;</textarea></div>
+  </section>
+  <section class="card">
+    <h2>Il forfettario è un regime da professionisti</h2>
+    <p class="meta"><a href="settori/">settori/</a> · CSV in <code>data/</code> · altezza iniziale 630px</p>
+    <div class="prev">
+      <div><span class="lab">Desktop</span><iframe src="settori/" style="width:100%;max-width:760px;height:630px" title="Il forfettario per settore di attività – anteprima desktop" loading="lazy"></iframe></div>
+      <div class="mob"><span class="lab">Mobile, 360px</span><iframe src="settori/" style="width:360px;height:1030px" title="Il forfettario per settore di attività – anteprima mobile" loading="lazy"></iframe></div>
+    </div>
+    <div class="snip"><button type="button" class="copy">Copia lo snippet per il CMS</button><textarea readonly rows="5">&lt;iframe src=&quot;https://lorenzobuonarosa.github.io/p_iva/settori/&quot; width=&quot;100%&quot; height=&quot;630&quot; frameborder=&quot;0&quot; scrolling=&quot;no&quot; title=&quot;Il forfettario per settore di attività&quot;&gt;&lt;/iframe&gt;
+&lt;script&gt;
+(function(){if(window.__radarQNv2)return;window.__radarQNv2=1;var O=&quot;https://lorenzobuonarosa.github.io&quot;;var MQ=window.matchMedia(&quot;(prefers-color-scheme:dark)&quot;);function frames(){return Array.prototype.filter.call(document.getElementsByTagName(&quot;iframe&quot;),function(f){return(f.getAttribute(&quot;src&quot;)||&quot;&quot;).indexOf(O+&quot;/&quot;)===0;});}function theme(){var t=document.documentElement.getAttribute(&quot;data-theme&quot;);return t===&quot;dark&quot;||t===&quot;light&quot;?t:(MQ.matches?&quot;dark&quot;:&quot;light&quot;);}function bgOf(el){for(;el&amp;&amp;el.nodeType===1;el=el.parentElement){var c=getComputedStyle(el).backgroundColor;if(c&amp;&amp;c !==&quot;transparent&quot;&amp;&amp;!/rgba\([^)]*,\s*0\)$/.test(c))return c;}return null;}function send(f){try{f.contentWindow.postMessage({sentinel:&quot;radar-qn&quot;,type:&quot;theme&quot;,theme:theme(),bg:bgOf(f.parentElement)},O);}catch(e){}}function sendAll(){frames().forEach(send);}window.addEventListener(&quot;message&quot;,function(e){if(e.origin !==O)return;var d=e.data;if(!d||d.sentinel !==&quot;radar-qn&quot;||d.type !==&quot;height&quot;)return;frames().forEach(function(f){if(f.contentWindow !==e.source)return;var h=Math.ceil(+d.height);if(h &gt; 0&amp;&amp;20000 &gt; h)f.style.height=h+&quot;px&quot;;send(f);});});new MutationObserver(function(){sendAll();setTimeout(sendAll,400);}).observe(document.documentElement,{attributes:true,attributeFilter:[&quot;data-theme&quot;]});if(MQ.addEventListener)MQ.addEventListener(&quot;change&quot;,sendAll);})();
+&lt;/script&gt;</textarea></div>
+  </section>
+  <section class="card">
+    <h2>La nuova soglia costa 323 milioni l&#x27;anno, il regime 3,4 miliardi</h2>
+    <p class="meta"><a href="costo/">costo/</a> · CSV in <code>data/</code> · altezza iniziale 650px</p>
+    <div class="prev">
+      <div><span class="lab">Desktop</span><iframe src="costo/" style="width:100%;max-width:760px;height:650px" title="Quanto costa il forfettario allo Stato – anteprima desktop" loading="lazy"></iframe></div>
+      <div class="mob"><span class="lab">Mobile, 360px</span><iframe src="costo/" style="width:360px;height:1050px" title="Quanto costa il forfettario allo Stato – anteprima mobile" loading="lazy"></iframe></div>
+    </div>
+    <div class="snip"><button type="button" class="copy">Copia lo snippet per il CMS</button><textarea readonly rows="5">&lt;iframe src=&quot;https://lorenzobuonarosa.github.io/p_iva/costo/&quot; width=&quot;100%&quot; height=&quot;650&quot; frameborder=&quot;0&quot; scrolling=&quot;no&quot; title=&quot;Quanto costa il forfettario allo Stato&quot;&gt;&lt;/iframe&gt;
+&lt;script&gt;
+(function(){if(window.__radarQNv2)return;window.__radarQNv2=1;var O=&quot;https://lorenzobuonarosa.github.io&quot;;var MQ=window.matchMedia(&quot;(prefers-color-scheme:dark)&quot;);function frames(){return Array.prototype.filter.call(document.getElementsByTagName(&quot;iframe&quot;),function(f){return(f.getAttribute(&quot;src&quot;)||&quot;&quot;).indexOf(O+&quot;/&quot;)===0;});}function theme(){var t=document.documentElement.getAttribute(&quot;data-theme&quot;);return t===&quot;dark&quot;||t===&quot;light&quot;?t:(MQ.matches?&quot;dark&quot;:&quot;light&quot;);}function bgOf(el){for(;el&amp;&amp;el.nodeType===1;el=el.parentElement){var c=getComputedStyle(el).backgroundColor;if(c&amp;&amp;c !==&quot;transparent&quot;&amp;&amp;!/rgba\([^)]*,\s*0\)$/.test(c))return c;}return null;}function send(f){try{f.contentWindow.postMessage({sentinel:&quot;radar-qn&quot;,type:&quot;theme&quot;,theme:theme(),bg:bgOf(f.parentElement)},O);}catch(e){}}function sendAll(){frames().forEach(send);}window.addEventListener(&quot;message&quot;,function(e){if(e.origin !==O)return;var d=e.data;if(!d||d.sentinel !==&quot;radar-qn&quot;||d.type !==&quot;height&quot;)return;frames().forEach(function(f){if(f.contentWindow !==e.source)return;var h=Math.ceil(+d.height);if(h &gt; 0&amp;&amp;20000 &gt; h)f.style.height=h+&quot;px&quot;;send(f);});});new MutationObserver(function(){sendAll();setTimeout(sendAll,400);}).observe(document.documentElement,{attributes:true,attributeFilter:[&quot;data-theme&quot;]});if(MQ.addEventListener)MQ.addEventListener(&quot;change&quot;,sendAll);})();
+&lt;/script&gt;</textarea></div>
+  </section>
+  <section class="card">
+    <h2>Quanto pagheresti con la flat tax</h2>
+    <p class="meta"><a href="contatore/">contatore/</a> · CSV in <code>data/</code> · altezza iniziale 1020px</p>
+    <div class="prev">
+      <div><span class="lab">Desktop</span><iframe src="contatore/" style="width:100%;max-width:760px;height:1020px" title="Calcolatore forfettario e ordinario – anteprima desktop" loading="lazy"></iframe></div>
+      <div class="mob"><span class="lab">Mobile, 360px</span><iframe src="contatore/" style="width:360px;height:1760px" title="Calcolatore forfettario e ordinario – anteprima mobile" loading="lazy"></iframe></div>
+    </div>
+    <div class="snip"><button type="button" class="copy">Copia lo snippet per il CMS</button><textarea readonly rows="5">&lt;iframe src=&quot;https://lorenzobuonarosa.github.io/p_iva/contatore/&quot; width=&quot;100%&quot; height=&quot;1020&quot; frameborder=&quot;0&quot; scrolling=&quot;no&quot; title=&quot;Calcolatore forfettario e ordinario&quot;&gt;&lt;/iframe&gt;
+&lt;script&gt;
+(function(){if(window.__radarQNv2)return;window.__radarQNv2=1;var O=&quot;https://lorenzobuonarosa.github.io&quot;;var MQ=window.matchMedia(&quot;(prefers-color-scheme:dark)&quot;);function frames(){return Array.prototype.filter.call(document.getElementsByTagName(&quot;iframe&quot;),function(f){return(f.getAttribute(&quot;src&quot;)||&quot;&quot;).indexOf(O+&quot;/&quot;)===0;});}function theme(){var t=document.documentElement.getAttribute(&quot;data-theme&quot;);return t===&quot;dark&quot;||t===&quot;light&quot;?t:(MQ.matches?&quot;dark&quot;:&quot;light&quot;);}function bgOf(el){for(;el&amp;&amp;el.nodeType===1;el=el.parentElement){var c=getComputedStyle(el).backgroundColor;if(c&amp;&amp;c !==&quot;transparent&quot;&amp;&amp;!/rgba\([^)]*,\s*0\)$/.test(c))return c;}return null;}function send(f){try{f.contentWindow.postMessage({sentinel:&quot;radar-qn&quot;,type:&quot;theme&quot;,theme:theme(),bg:bgOf(f.parentElement)},O);}catch(e){}}function sendAll(){frames().forEach(send);}window.addEventListener(&quot;message&quot;,function(e){if(e.origin !==O)return;var d=e.data;if(!d||d.sentinel !==&quot;radar-qn&quot;||d.type !==&quot;height&quot;)return;frames().forEach(function(f){if(f.contentWindow !==e.source)return;var h=Math.ceil(+d.height);if(h &gt; 0&amp;&amp;20000 &gt; h)f.style.height=h+&quot;px&quot;;send(f);});});new MutationObserver(function(){sendAll();setTimeout(sendAll,400);}).observe(document.documentElement,{attributes:true,attributeFilter:[&quot;data-theme&quot;]});if(MQ.addEventListener)MQ.addEventListener(&quot;change&quot;,sendAll);})();
+&lt;/script&gt;</textarea></div>
+  </section>
+  <footer class="r-foot"><span>Dati in <code>data/</code>, parametri del calcolatore in <code>data/parametri-contatore.csv</code></span><span>Elaborazione Radar – QN</span></footer>
+</main>
+<script>
+document.querySelectorAll(".copy").forEach(function (b) {
+  b.addEventListener("click", function () {
+    var t = b.nextElementSibling; t.select();
+    (navigator.clipboard ? navigator.clipboard.writeText(t.value) : Promise.reject()).catch(function () { document.execCommand("copy"); });
+    b.textContent = "Copiato"; setTimeout(function () { b.textContent = "Copia lo snippet per il CMS"; }, 1500);
+  });
+});
+</script>
+</body>
+</html>

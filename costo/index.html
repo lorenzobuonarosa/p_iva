@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quanto costa il forfettario allo Stato – Radar QN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,700&display=swap">
+<link rel="stylesheet" href="../assets/radar.css">
+<style>
+  #p-misura { flex: 2.2 1 0; }
+  #p-regime { flex: 1 1 0; }
+  @media (max-width: 559px) { #p-misura, #p-regime { flex: none; } }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="../assets/radar.js"></script>
+</head>
+<body>
+<main class="radar">
+  <header>
+    <h1 class="r-title" id="title">La nuova soglia costa 323 milioni l'anno, il regime 3,4 miliardi</h1>
+    <p class="r-sub">Minor gettito stimato, in milioni di euro</p>
+  </header>
+
+  <div class="r-panels">
+    <figure class="r-chart" id="p-misura">
+      <p class="r-chart__head" id="h-misura">La nuova soglia a 100mila euro</p>
+      <p class="r-chart__sub">Costo per anno</p>
+    </figure>
+    <figure class="r-chart" id="p-regime">
+      <p class="r-chart__head" id="h-regime">Il regime forfettario</p>
+      <p class="r-chart__sub" id="s-regime">Costo complessivo</p>
+    </figure>
+  </div>
+  <p class="r-note">Stessa scala nei due pannelli. Il costo della nuova soglia comprende anche la conferma a 35mila euro della soglia per i redditi da lavoro dipendente. Il costo complessivo del regime è una stima.</p>
+
+  <footer class="r-foot">
+    <span>Fonte: Relazione tecnica al DDL di bilancio 2027 (Dossier Senato-Camera n. 793); Corte dei conti</span>
+    <span>Elaborazione Radar – QN</span>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var R = Radar, fmt = R.fmt;
+  var f1 = function (v) { return fmt(v, 1); };
+  var NOTA_MISURA = "La misura comprende anche la conferma a 35mila euro della soglia per i redditi da lavoro dipendente";
+
+  R.loadCSV("../data/costo.csv").then(function (rows) {
+    var all = rows.map(function (r) { return { voce: r.voce, k: r.anno, v: R.num(r.milioni), fonte: r.fonte }; });
+    var regime = all.find(function (d) { return /complesso/i.test(d.voce); });
+    var misura = all.filter(function (d) { return d !== regime; });
+    var regimeLabel = misura.find(function (d) { return /^dal/i.test(d.k); });   // "dal 2030": a regime
+    misura.forEach(function (d) { d.aRegime = d === regimeLabel; });
+
+    // titolo con i numeri del CSV
+    d3.select("#title").text("La nuova soglia costa " + fmt(regimeLabel.v, 0) + " milioni l'anno, il regime " +
+      fmt(regime.v / 1000, 1) + " miliardi");
+    d3.select("#s-regime").text("Costo complessivo nel " + regime.k);
+
+    var maxV = d3.max(all, function (d) { return d.v; });
+    var panels = [
+      { el: document.getElementById("p-misura"), data: misura, ticks: true },
+      { el: document.getElementById("p-regime"), data: [regime], ticks: true }
+    ];
+
+    panels.forEach(function (P) {
+      var host = P.el, tip = R.tooltip(host), clear = function () {};
+      R.dismissOutside(host, function () { tip.hide(); clear(); });
+
+      R.responsive(host, function (W, phase) {
+        var narrow = R.isNarrow(window.innerWidth);
+        var H = narrow ? 300 : 340;
+        var m = { top: 22, right: 0, bottom: 40, left: 40 };
+        var w = W - m.left - m.right, h = H - m.top - m.bottom;
+        // stessa scala per entrambi i pannelli
+        var y = d3.scaleLinear().domain([0, maxV]).nice().range([h, 0]);
+        // stessa larghezza delle barre nei due pannelli
+        var bw = Math.min(narrow ? 46 : 56, (document.getElementById("p-misura").getBoundingClientRect().width - 40) / misura.length * 0.62);
+        var step = P.data.length > 1 ? w / P.data.length : w;
+        var cx = function (i) { return P.data.length > 1 ? step * i + step / 2 : Math.min(w / 2, bw * 1.2); };
+
+        d3.select(host).select("svg").remove();
+        var isReg = P.data[0] === regime;
+        var svg = d3.select(host).insert("svg", ".r-tip").attr("width", W).attr("height", H).attr("role", "img")
+          .attr("aria-label", isReg
+            ? "Il regime forfettario nel complesso costa circa " + fmt(regime.v, 0) + " milioni di euro nel " + regime.k + "."
+            : "Costo della nuova soglia: " + misura.map(function (d) { return d.k + " " + f1(d.v) + " milioni"; }).join(", ") + ".");
+        svg.append("title").text(isReg ? "Costo complessivo del regime forfettario" : "Costo della nuova soglia a 100mila euro per anno");
+        var g = svg.append("g").attr("transform", "translate(" + m.left + "," + m.top + ")");
+        var ticks = y.ticks(narrow ? 3 : 4);
+        g.append("g").attr("class", "grid").selectAll("line").data(ticks).join("line")
+          .attr("x1", -m.left).attr("x2", w)
+          .attr("y1", function (d) { return Math.round(y(d)) + 0.5; }).attr("y2", function (d) { return Math.round(y(d)) + 0.5; })
+          .attr("class", function (d) { return d === 0 ? "baseline" : null; });
+        g.append("g").selectAll("text").data(ticks).join("text").attr("class", "tick-label")
+          .attr("x", -m.left).attr("y", function (d) { return y(d) - 5; }).text(function (d) { return fmt(d, 0); });
+
+        var bars = g.append("g").selectAll("path").data(P.data).join("path").attr("class", "mark")
+          .style("fill", function (d) { return d === regime ? "var(--red)" : "var(--blue)"; });
+        R.enter(bars, phase,
+          function (s) { s.attr("d", function (d, i) { return R.barPathV(cx(i) - bw / 2, h, bw, 0, 2); }); },
+          function (s) { s.attrTween("d", function (d) { var i = P.data.indexOf(d); return function (t) { var yy = y(d.v * t); return R.barPathV(cx(i) - bw / 2, yy, bw, h - yy, 2); }; }); });
+
+        var vals = g.append("g").selectAll("text").data(P.data).join("text").attr("class", "val-label mark").attr("text-anchor", "middle")
+          .attr("x", function (d, i) { return cx(i); }).attr("y", function (d) { return y(d.v) - 6; });
+        vals.each(function (d) { R.countUp(d3.select(this), d.v, d === regime ? function (v) { return fmt(v, 0); } : f1, phase); });
+
+        var labs = g.append("g").selectAll("text").data(P.data).join("text").attr("class", "tick-label").attr("text-anchor", "middle")
+          .attr("x", function (d, i) { return cx(i); }).attr("y", h + 17);
+        labs.each(function (d) {
+          var t = d3.select(this);
+          t.append("tspan").text(d.k);
+          if (d.aRegime || d === regime) t.append("tspan").attr("x", cx(P.data.indexOf(d))).attr("dy", 15).text(d.aRegime ? "a regime" : "stima");
+        });
+
+        clear = function () { bars.classed("is-dimmed", false); vals.classed("is-dimmed", false); };
+        g.append("g").selectAll("rect").data(P.data).join("rect").attr("class", "hit")
+          .attr("x", function (d, i) { return cx(i) - Math.max(bw, step) / 2; }).attr("width", Math.max(bw, Math.min(step, w)))
+          .attr("y", -m.top).attr("height", h + m.top)
+          .on("pointerenter pointerdown", function (ev, d) {
+            bars.classed("is-dimmed", function (q) { return q !== d; });
+            vals.classed("is-dimmed", function (q) { return q !== d; });
+            var i = P.data.indexOf(d);
+            tip.show(R.tipHTML({
+              title: d === regime ? "Regime forfettario, " + d.k : "Nuova soglia, " + d.k + (d.aRegime ? " (a regime)" : ""),
+              value: d === regime ? fmt(d.v, 0) : f1(d.v), unit: "milioni di euro",
+              rows: d === regime ? [["Nuova soglia a regime", f1(regimeLabel.v) + " mln"]] : [["Regime forfettario (" + regime.k + ")", fmt(regime.v, 0) + " mln"]],
+              note: (d === regime ? "Stima. " : NOTA_MISURA + ". ") + "Fonte: " + d.fonte
+            }), cx(i) + m.left, y(d.v) + m.top);
+          })
+          .on("pointerleave", function (ev) { if (ev.pointerType === "mouse") { tip.hide(); clear(); } });
+      });
+    });
+  }).catch(function (e) { R.fail("#p-misura", e); });
+})();
+</script>
+</body>
+</html>

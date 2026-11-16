@@ -1,0 +1,38 @@
+parametro;valore;nota
+aliquota_gs;26,07;% gestione separata professionisti senza altra copertura, 2026 (circolare INPS n. 8/2026) – aggiornare con i valori 2027
+massimale;122295;euro, massimale contributivo 2026 per iscritti dal 1996 (circolari INPS n. 8 e n. 14/2026) – aggiornare con i valori 2027
+minimale_artcom;18808;euro, minimale di reddito artigiani e commercianti 2026 (circolare INPS n. 14/2026)
+fisso_artigiani;4521,36;euro, contributo sul minimale artigiani 2026, maternità compresa (circolare INPS n. 14/2026)
+fisso_commercianti;4611,64;euro, contributo sul minimale commercianti 2026, maternità compresa (circolare INPS n. 14/2026)
+aliquota_artigiani;24;% sul reddito oltre il minimale e fino alla seconda fascia, 2026
+aliquota_commercianti;24,48;% sul reddito oltre il minimale e fino alla seconda fascia, 2026
+fascia2_artcom;56224;euro, oltre questa soglia l'aliquota artigiani e commercianti sale di un punto, 2026
+aliquota_artigiani_2;25;% oltre la seconda fascia, 2026
+aliquota_commercianti_2;25,48;% oltre la seconda fascia, 2026
+riduzione_forfettari_artcom;35;% riduzione contributiva per forfettari che la chiedono (L. 190/2014, art. 1, c. 77)
+aliquota_forfettario;15;%
+aliquota_startup;5;% per i primi 5 anni di attività
+irpef_s1;28000;limite primo scaglione
+irpef_s2;55000;limite secondo scaglione (solo 2027, DDL bilancio art. 9 c. 1)
+irpef_a1;23;%
+irpef_a2;33;%
+irpef_a3;43;%
+detr_max;1265;euro, detrazione lavoro autonomo fino al primo limite (TUIR art. 13 c. 5)
+detr_l1;5500;euro, primo limite di reddito della detrazione
+detr_base;500;euro, quota fissa della detrazione tra 5.500 e 28.000 euro
+detr_var;765;euro, quota variabile della detrazione tra 5.500 e 28.000 euro
+detr_l2;28000;euro, secondo limite di reddito della detrazione
+detr_l3;50000;euro, reddito oltre cui la detrazione si azzera
+add_regionale;1,76;% media effettiva MEF 2024, fascia di volume d'affari 75-100mila (97,19 mln su 5.537,6 mln di imponibile)
+add_comunale;0,70;% media effettiva MEF 2024, fascia di volume d'affari 75-100mila (38,50 mln su 5.537,6 mln di imponibile)
+soglia_iva;85000;euro, oltre si applica l'IVA in fattura
+soglia_irpef;100000;euro, soglia del forfettario per imposte e contributi (2027)
+uscita_immediata_irpef;115000;euro, oltre si esce subito dal forfettario
+uscita_immediata_iva;100000;euro, oltre si applica subito l'IVA ordinaria
+iva;22;%
+coeff_professionista;78;% coefficiente di redditività
+coeff_commercio;40;%
+coeff_ambulante;54;%
+coeff_intermediario;62;%
+coeff_costruzioni;86;%
+coeff_altre;67;%

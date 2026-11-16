@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I forfettari per fascia di ricavi – Radar QN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,700&display=swap">
+<link rel="stylesheet" href="../assets/radar.css">
+<style>
+  .cat-label { font-size: 13px; font-weight: 500; fill: var(--ink); }
+  .sw--light { background: var(--blue); opacity: .42; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="../assets/radar.js"></script>
+</head>
+<body>
+<main class="radar">
+  <header>
+    <h1 class="r-title">Quasi un forfettario su due incassa meno di 20mila euro l'anno</h1>
+    <p class="r-sub" id="sub">Contribuenti in regime forfettario per ricavi o compensi dichiarati, anno d'imposta 2024</p>
+  </header>
+
+  <figure class="r-chart" id="chart"></figure>
+  <div class="r-key" id="key"></div>
+
+  <footer class="r-foot">
+    <span>Fonte: Corte dei conti, Relazione sul rendiconto generale dello Stato 2025 (dati Agenzia delle Entrate); MEF per l'imposta media</span>
+    <span>Elaborazione Radar – QN</span>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var R = Radar, fmt = R.fmt, f0 = function (v) { return fmt(v, 0); };
+
+  // Imposta sostitutiva media per contribuente (MEF, Dipartimento delle Finanze, anno d'imposta 2024):
+  // 3.791.816 migliaia di euro di imposta sostitutiva dichiarata da 1.813.308 contribuenti.
+  var IMPOSTA_MIGLIAIA = 3791816, CONTRIBUENTI_IMPOSTA = 1813308;
+  var impostaMedia = IMPOSTA_MIGLIAIA * 1000 / CONTRIBUENTI_IMPOSTA; // circa 2.091 euro
+
+  R.loadCSV("../data/fasce-ricavi.csv").then(function (rows) {
+    var all = rows.map(function (r) {
+      return { k: r.fascia, v: R.num(r.forfettari), der: /^s/i.test(r.derivato), zero: R.num(r.ricavi_zero), nota: r.nota };
+    });
+    // la riga "Totale" del CSV è il denominatore delle percentuali (2.027.665)
+    var totRow = all.find(function (d) { return /^totale/i.test(d.k); });
+    var data = all.filter(function (d) { return d !== totRow; });
+    var TOT = totRow.v;
+    data.forEach(function (d) { d.share = d.v / TOT; });
+    var hot = data[data.length - 1];        // "Oltre 80mila euro": la platea vicina alla soglia
+    var first = data[0];
+
+    // sottotitolo: imposta media letta dalla costante qui sopra
+    d3.select("#sub").text("Contribuenti in regime forfettario per ricavi o compensi dichiarati, anno d'imposta 2024. Con incassi così bassi, l'imposta sostitutiva media si ferma a circa " +
+      fmt(Math.round(impostaMedia / 1000), 0) + "mila euro l'anno");
+    // controllo del titolo ("quasi uno su due")
+    if (!(first.share > 0.4 && first.share < 0.5)) console.warn("Titolo da ricontrollare: la prima fascia vale " + R.pct(first.share));
+
+    var der = data.find(function (d) { return d.der; });
+    d3.select("#key").html('<span><i class="sw" style="background:var(--blue)"></i>Dato della fonte</span>' +
+      (der ? '<span><i class="sw sw--light"></i>' + der.k + ': calcolato per differenza dal totale</span>' : "") +
+      '<span><i class="sw" style="background:var(--red)"></i>La fascia più vicina alla soglia</span>');
+
+    var host = document.getElementById("chart");
+    var tip = R.tooltip(host);
+    var clear = function () {};
+    R.dismissOutside(host, function () { tip.hide(); clear(); });
+    var colorOf = function (d) { return d === hot ? "var(--red)" : "var(--blue)"; };
+
+    R.responsive(host, function (W, phase) {
+      var narrow = R.isNarrow(W);
+      var row = narrow ? 64 : 62, bh = narrow ? 24 : 26, labH = 20;
+      var annoH = 30;
+      var H = annoH + row * data.length;
+      var valW = narrow ? 112 : 130;
+      var x = d3.scaleLinear().domain([0, d3.max(data, function (d) { return d.v; })]).range([0, W - valW]);
+
+      d3.select(host).select("svg").remove();
+      var svg = d3.select(host).insert("svg", ".r-tip").attr("width", W).attr("height", H).attr("role", "img")
+        .attr("aria-label", "Grafico a barre: " + data.map(function (d) { return d.k + " " + f0(d.v) + " forfettari (" + R.pct(d.share) + ")"; }).join("; ") +
+          ". Totale " + f0(TOT) + ".");
+      svg.append("title").text("Contribuenti forfettari per fascia di ricavi o compensi, 2024");
+      var g = svg.append("g").attr("transform", "translate(0," + annoH + ")");
+      var yy = function (i) { return i * row + labH; };
+
+      g.append("g").selectAll("text").data(data).join("text").attr("class", "cat-label mark")
+        .attr("x", 0).attr("y", function (d, i) { return yy(i) - 7; })
+        .style("fill", function (d) { return d === hot ? "var(--red)" : null; })
+        .style("font-weight", function (d) { return d === hot ? 600 : null; })
+        .text(function (d) { return d.k; });
+
+      // il dato derivato è più chiaro (stesso blu, opacità ridotta: funziona anche nel tema scuro)
+      var bars = g.append("g").selectAll("path").data(data).join("path").attr("class", "mark").style("fill", colorOf)
+        .style("fill-opacity", function (d) { return d.der ? 0.42 : null; });
+      R.enter(bars, phase,
+        function (s) { s.attr("d", function (d, i) { return R.barPathH(0, yy(i), 0, bh, 2); }); },
+        function (s) { s.attrTween("d", function (d) { var i = data.indexOf(d); return function (t) { return R.barPathH(0, yy(i), x(d.v) * t, bh, 2); }; }); });
+
+      var vals = g.append("g").selectAll("text").data(data).join("text").attr("class", "val-label mark")
+        .attr("x", function (d) { return x(d.v) + 8; }).attr("y", function (d, i) { return yy(i) + bh / 2; }).attr("dy", "0.35em");
+      vals.each(function (d) {
+        var t = d3.select(this);
+        var fmtV = function (v) { return f0(v); };
+        t.text(null);
+        var a = t.append("tspan"), b = t.append("tspan").attr("class", "val-label--muted").style("font-weight", 500).style("fill", "var(--ink-2)");
+        R.countUp(a, d.v, fmtV, phase);
+        R.countUp(b, d.share * 100, function (v) { return "  " + fmt(v, 1) + "%"; }, phase);
+      });
+
+      // annotazione sulla prima barra (numero dal CSV)
+      var an = g.append("g").attr("class", "anno");
+      var ax = Math.min(x(first.v) * (narrow ? 0.55 : 0.62), x(first.v) - 20), ay = yy(0);
+      var tx = narrow ? 0 : ax + 8;
+      var at = an.append("text").attr("x", narrow ? ax - 6 : tx).attr("y", -annoH + 14)
+        .attr("text-anchor", narrow ? "end" : "start")
+        .text("di cui circa " + fmt(first.zero / 1000, 0) + "mila con ricavi pari a zero");
+      if (narrow) {
+        at.attr("text-anchor", "start").attr("x", 0);
+        var tw = at.node().getComputedTextLength();
+        ax = Math.min(tw * 0.75, x(first.v) - 10);
+      }
+      // linea a gomito dal testo al pallino sul bordo superiore della barra
+      var lineY = -annoH + 10;
+      if (narrow) an.append("path").attr("d", "M" + ax + "," + (lineY + 8) + "V" + (ay + 2));
+      else an.append("path").attr("d", "M" + (tx - 4) + "," + lineY + "H" + ax + "V" + (ay + 2));
+      an.append("circle").attr("cx", ax).attr("cy", ay + 2).attr("r", 1.75);
+      R.enter(an, phase, function (s) { s.style("opacity", 0); }, function (s) { s.style("opacity", 1); }, R.DUR * 0.8);
+
+      clear = function () { bars.classed("is-dimmed", false); vals.classed("is-dimmed", false); };
+      g.append("g").selectAll("rect").data(data).join("rect").attr("class", "hit")
+        .attr("x", 0).attr("width", W).attr("y", function (d, i) { return i * row; }).attr("height", row)
+        .on("pointerenter pointerdown", function (ev, d) {
+          bars.classed("is-dimmed", function (q) { return q !== d; });
+          vals.classed("is-dimmed", function (q) { return q !== d; });
+          var i = data.indexOf(d);
+          tip.show(R.tipHTML({
+            title: d.k, value: f0(d.v), unit: "forfettari",
+            rows: [["Quota sul totale", R.pct(d.share)], ["Totale forfettari", f0(TOT)]],
+            note: d.nota ? (d.der ? "Dato derivato. " : "") + d.nota : null
+          }), Math.min(x(d.v), W - 40), yy(i) + annoH);
+        })
+        .on("pointerleave", function (ev) { if (ev.pointerType === "mouse") { tip.hide(); clear(); } });
+    });
+  }).catch(function (e) { R.fail("#chart", e); });
+})();
+</script>
+</body>
+</html>
