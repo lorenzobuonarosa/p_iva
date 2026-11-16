@@ -96,6 +96,10 @@
   .rowv--net b { font-size: 18px; font-weight: 700; }
   .rowv .det { display: block; font-size: 11.5px; color: var(--ink-2); font-weight: 400; }
 
+  .rng input[type=range]:disabled { cursor: not-allowed; }
+  .rng input[type=range]:disabled::-webkit-slider-thumb { background: var(--grey-3); box-shadow: 0 0 0 1px var(--grey-3); }
+  .rng input[type=range]:disabled::-moz-range-thumb { background: var(--grey-3); box-shadow: 0 0 0 1px var(--grey-3); }
+  .rng input[type=range]:disabled::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--grey-3) 0 var(--p, 50%), var(--rule) var(--p, 50%) 100%); }
   .seg button:disabled { opacity: .4; cursor: not-allowed; text-decoration: line-through; }
   [hidden] { display: none !important; }
   .split { display: flex; gap: 2px; height: 16px; margin: 16px 0 0; }
@@ -182,7 +186,7 @@
       <label class="chk" id="start-box" style="margin-top:14px !important"><input type="checkbox" id="start"> Attività avviata da meno di 5 anni (imposta al 5%)</label>
     </div>
     <div class="ctl__full" id="costi-box">
-      <label for="costi">Spese reali per lavorare: <span class="val-inline" id="costi-v"></span> degli incassi</label>
+      <label for="costi"><span id="costi-l">Spese reali per lavorare</span>: <span class="val-inline" id="costi-v"></span> degli incassi</label>
       <div class="rng rng--small" style="padding-bottom:0">
         <input id="costi" type="range" min="0" max="60" step="1" value="15">
       </div>
@@ -311,7 +315,12 @@
       }
     });
     var costi = document.getElementById("costi"), costiV = document.getElementById("costi-v");
-    function syncCosti() { costi.value = S.costi; costiV.textContent = S.costi + "%"; costi.style.setProperty("--p", (S.costi / 60 * 100) + "%"); }
+    // nel forfettario il cursore è bloccato sulle spese forfettarie (100 − coefficiente); nell'ordinario mostra le spese scelte dal lettore
+    function syncCosti(fisse) {
+      var v = fisse == null ? S.costi : fisse;
+      costi.disabled = fisse != null; costi.value = v; costiV.textContent = v + "%";
+      costi.style.setProperty("--p", (v / 60 * 100) + "%");
+    }
     costi.addEventListener("input", function () { S.costi = +costi.value; syncCosti(); update(); });
     document.getElementById("start").addEventListener("change", function (ev) { S.startup = ev.target.checked; update(); });
 
@@ -330,8 +339,8 @@
       "<li><b>Artigiani e commercianti.</b> Contributo fisso sul minimale di " + fmt(P.minimale_artcom, 0) + " euro (" + fmt(P.fisso_artigiani, 2) + " euro artigiani, " + fmt(P.fisso_commercianti, 2) + " euro commercianti), più il " + pp(P.aliquota_artigiani) + " (artigiani) o il " + pp(P.aliquota_commercianti) + " (commercianti) sul reddito oltre il minimale, che salgono al " + pp(P.aliquota_artigiani_2) + " e al " + pp(P.aliquota_commercianti_2) + " oltre " + fmt(P.fascia2_artcom, 0) + " euro, fino al massimale di " + fmt(P.massimale, 0) + " euro. Nel forfettario si applica la riduzione del " + P.riduzione_forfettari_artcom + "% (va chiesta all'INPS), sull'intero importo. Si usano i valori dei commercianti per " + G.filter(function (g) { return g.artcom === "commercianti"; }).map(function (g) { return g.nome.toLowerCase(); }).join(", ") + "; quelli degli artigiani per gli altri gruppi.</li>" +
       "<li><b>Codici ATECO e coefficienti.</b> Tabella dell'allegato 4 della legge 190/2014, che usa i codici ATECO 2007: " + G.map(function (g) { return g.nome.toLowerCase() + " (" + g.codici + ") " + g.coeff + "%"; }).join("; ") + ". Con la classificazione ATECO 2025, in vigore da aprile 2025, i coefficienti restano questi finché non ne arrivano di nuovi: chi ha un codice nuovo trova quello corrispondente nella tabella di raccordo dell'ISTAT. La previdenza predefinita segue il gruppo e si può cambiare.</li>" +
       "<li><b>Parametri INPS:</b> valori 2026 (circolari INPS n. 8 e n. 14 del 2026), in attesa di quelli 2027. Massimale per chi ha iniziato a versare dal 1996.</li>" +
-      "<li><b>Spese reali.</b> Nell'ordinario le tasse si pagano sugli incassi meno le spese sostenute per lavorare. Nel forfettario le spese vere non contano: il fisco presume che siano pari a 100 meno il coefficiente (per esempio il 22% degli incassi con il coefficiente del 78%).</li>" +
-      "<li><b>«Ti restano»</b> = incassi − contributi − imposte; nell'ordinario si tolgono anche le spese reali indicate. Nel forfettario le spese non entrano nel calcolo, quindi la cifra è prima delle spese.</li>" +
+      "<li><b>Spese.</b> Nell'ordinario le tasse si pagano sugli incassi meno le spese reali indicate dal lettore. Nel forfettario le spese non si indicano: la legge le fissa a 100 meno il coefficiente di redditività (per esempio il 22% degli incassi con il coefficiente del 78%).</li>" +
+      "<li><b>«Ti restano»</b> = incassi − spese − contributi − imposte: nell'ordinario con le spese reali indicate, nel forfettario con le spese forfettarie fissate dalla legge.</li>" +
       "</ul><p>Stima indicativa: non considera altre detrazioni, altri redditi, casse professionali private, acconti, crediti d'imposta e regole specifiche dei singoli settori. Non sostituisce il calcolo di un commercialista.</p>";
 
     // ---- aggiornamento risultati ----
@@ -363,7 +372,9 @@
       // controlli che dipendono dal regime
       setSeg("reg", reg);
       document.querySelector('#reg button[data-v="forf"]').disabled = forzato;
-      document.getElementById("costi-box").hidden = reg === "forf";
+      var presunte = 100 - r.coeff;
+      syncCosti(reg === "forf" ? presunte : null);
+      txt("costi-l", reg === "forf" ? "Spese, fisse nel forfettario" : "Spese reali per lavorare");
       document.getElementById("start-box").hidden = reg === "ord";
       document.getElementById("reg-hint").innerHTML = forzato
         ? '<span class="warn">Oltre ' + fmt(P.uscita_immediata_irpef, 0) + " euro il forfettario non si può usare:</span> il calcolo è con il regime ordinario."
@@ -380,7 +391,9 @@
         : '<span class="warn">Codice non trovato nella tabella del forfettario: controlla le cifre o scegli il gruppo dall\'elenco.</span> Per ora: ';
       h.innerHTML = warn + (codeState === "ok" ? "<b>" + C.formatta(ateco.value) + "</b> → " + g.nome + ". " : codeState === "no" ? g.nome + ". " : "Scrivi il codice oppure scegli il gruppo. ") +
         "Nel forfettario il reddito è " + art(g.coeff) + "<b>" + g.coeff + "%</b> degli incassi" + (codeState === "ok" ? "" : " (codici ATECO " + g.codici + ")") + ".";
-      document.getElementById("costi-hint").textContent = "Affitto, attrezzature, auto, materiali, software… Nell'ordinario le tasse si pagano sugli incassi meno queste spese.";
+      document.getElementById("costi-hint").innerHTML = reg === "forf"
+        ? "Nel forfettario le spese non si indicano: le fissa la legge in base al codice ATECO, " + (/^(8|11)/.test(String(presunte)) ? "all'" : "al ") + presunte + "% degli incassi (100 meno il coefficiente " + (/^(8|11)/.test(String(r.coeff)) ? "dell'" : "del ") + r.coeff + "%), qualunque cosa spendi davvero."
+        : "Affitto, attrezzature, auto, materiali, software… Nell'ordinario le tasse si pagano sugli incassi meno queste spese.";
 
       // stato
       var st;
@@ -403,12 +416,13 @@
         document.getElementById("bill-h").innerHTML = "Il conto con il forfettario <small>coefficiente " + r.coeff + "%, imposta al " + F.aliquota + "%</small>";
         rows = [
           ["Incassi", e0(S.incassi)],
-          ["Reddito forfettario", e0(F.reddito), "step", r.coeff + "% degli incassi"],
+          ["Spese forfettarie", "−" + e0(F.speseForf), "step", (100 - r.coeff) + "% degli incassi, fisse per legge"],
+          ["Reddito forfettario", e0(F.reddito), "sub", r.coeff + "% degli incassi"],
           ["Contributi INPS", e0(F.contributi), "pay", prevLab],
           ["Reddito imponibile", e0(F.imponibile), "step", "reddito meno contributi"],
           ["Imposta sostitutiva", e0(F.imposte), "pay", F.aliquota + "% del reddito imponibile"],
           ["Totale da pagare", e0(F.prelievo), "tot"],
-          ["Ti restano, prima delle spese", e0(F.restano), "net"]
+          ["Ti restano, dopo le spese", e0(F.netto), "net"]
         ];
       } else {
         document.getElementById("bill-h").innerHTML = "Il conto con l'ordinario <small>spese reali al " + S.costi + "%</small>";
@@ -430,21 +444,21 @@
       document.getElementById("bill").innerHTML = rowsHTML(rows);
 
       // barra: dove vanno gli incassi
-      var spe = reg === "ord" ? r.costiReali : 0, net = Math.max(0, X.restano);
+      var spe = reg === "ord" ? r.costiReali : F.speseForf, net = Math.max(0, reg === "ord" ? O.restano : F.netto);
       var parts = [X.imposte, X.contributi, spe, net], tot = d3.sum(parts) || 1;
       document.querySelectorAll("#split i").forEach(function (el, i) { el.style.width = (parts[i] / tot * 100) + "%"; el.style.display = parts[i] > 0 ? null : "none"; });
       document.getElementById("split-key").innerHTML =
         '<span><i class="sw sw--tax"></i>Imposte <b>' + e0(X.imposte) + "</b></span>" +
         '<span><i class="sw sw--con"></i>Contributi <b>' + e0(X.contributi) + "</b></span>" +
-        (spe ? '<span><i class="sw sw--spe"></i>Spese <b>' + e0(spe) + "</b></span>" : "") +
-        '<span><i class="sw sw--net"></i>Ti restano <b>' + e0(X.restano) + "</b></span>";
+        (spe ? '<span><i class="sw sw--spe"></i>' + (reg === "forf" ? "Spese forfettarie" : "Spese") + ' <b>' + e0(spe) + "</b></span>" : "") +
+        '<span><i class="sw sw--net"></i>Ti restano <b>' + e0(net) + "</b></span>";
 
       // confronto, in piccolo
       var alt = document.getElementById("alt");
       if (reg === "ord" && !forzato) {
         var d = O.prelievo - F.prelievo;
         alt.innerHTML = "Con il forfettario" + (S.incassi > P.soglia_irpef ? ", solo per quest'anno," : "") + " pagheresti <b>" + e0(F.prelievo) + "</b>: " +
-          e0(Math.abs(d)) + (d >= 0 ? " in meno" : " in più") + " (ma nel forfettario le spese reali non si scaricano).";
+          e0(Math.abs(d)) + (d >= 0 ? " in meno" : " in più") + " (nel forfettario le spese sono fisse, " + (/^(8|11)/.test(String(100 - r.coeff)) ? "all'" : "al ") + (100 - r.coeff) + "% degli incassi).";
       } else if (reg === "forf") {
         alt.innerHTML = "Per il confronto con l'ordinario scegli «Ordinario» qui sopra: lì contano le spese reali.";
       } else alt.innerHTML = "";

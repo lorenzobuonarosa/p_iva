@@ -56,7 +56,11 @@
       reddito: fRed, contributi: fCon, imponibile: fImp, aliquota: fAliq,
       imposte: fTax, sostitutiva: fTax,
       prelievo: fTax + fCon,
-      restano: I - costiReali - fCon - fTax
+      restano: I - costiReali - fCon - fTax,
+      // spese forfettarie: quelle che la legge presume, (100 − coefficiente)% degli incassi
+      speseForf: I - fRed,
+      // quello che resta togliendo le spese forfettarie invece di quelle reali
+      netto: fRed - fCon - fTax
     };
     // aliquota effettiva sul reddito reale (incassi − costi reali), uguale base per i due regimi
     var reale = I - costiReali;

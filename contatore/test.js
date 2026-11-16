@@ -33,6 +33,8 @@ var r1 = show("Professionista (ATECO 69.10.10, avvocato), 90.000 euro, gestione 
 near(r1.forf.reddito, 70200, "reddito forf. 90.000 × 78%");
 near(r1.forf.contributi, 70200 * 0.2607, "contributi GS 26,07%");
 near(r1.forf.imposte, (70200 - 18301.14) * 0.15, "imposta sostitutiva 15%");
+near(r1.forf.speseForf, 19800, "spese forfettarie 22% di 90.000");
+near(r1.forf.netto, 90000 - 19800 - r1.forf.prelievo, "ti restano nel forfettario, dopo le spese forfettarie");
 var imp1 = 76500 - 76500 * 0.2607;
 near(r1.ord.imponibile, imp1, "imponibile ordinario 76.500 − contributi");
 near(r1.ord.irpefLorda, 28000 * 0.23 + 27000 * 0.33 + (imp1 - 55000) * 0.43, "IRPEF lorda a scaglioni");
