@@ -10,7 +10,6 @@
 <link rel="stylesheet" href="../assets/radar.css">
 <style>
   .cat-label { font-size: 13px; font-weight: 500; fill: var(--ink); }
-  .sw--light { background: var(--blue); opacity: .42; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="../assets/radar.js"></script>
@@ -58,10 +57,8 @@
     // controllo del titolo ("quasi uno su due")
     if (!(first.share > 0.4 && first.share < 0.5)) console.warn("Titolo da ricontrollare: la prima fascia vale " + R.pct(first.share));
 
-    var der = data.find(function (d) { return d.der; });
-    d3.select("#key").html('<span><i class="sw" style="background:var(--blue)"></i>Dato della fonte</span>' +
-      (der ? '<span><i class="sw sw--light"></i>' + der.k + ': calcolato per differenza dal totale</span>' : "") +
-      '<span><i class="sw" style="background:var(--red)"></i>La fascia più vicina alla soglia</span>');
+    // chiave: solo il rosso (scelta redazionale: la fascia 20-50mila, calcolata per differenza, è segnalata solo nel tooltip)
+    d3.select("#key").html('<span><i class="sw" style="background:var(--red)"></i>La fascia più vicina alla soglia</span>');
 
     var host = document.getElementById("chart");
     var tip = R.tooltip(host);
@@ -91,9 +88,7 @@
         .style("font-weight", function (d) { return d === hot ? 600 : null; })
         .text(function (d) { return d.k; });
 
-      // il dato derivato è più chiaro (stesso blu, opacità ridotta: funziona anche nel tema scuro)
-      var bars = g.append("g").selectAll("path").data(data).join("path").attr("class", "mark").style("fill", colorOf)
-        .style("fill-opacity", function (d) { return d.der ? 0.42 : null; });
+      var bars = g.append("g").selectAll("path").data(data).join("path").attr("class", "mark").style("fill", colorOf);
       R.enter(bars, phase,
         function (s) { s.attr("d", function (d, i) { return R.barPathH(0, yy(i), 0, bh, 2); }); },
         function (s) { s.attrTween("d", function (d) { var i = data.indexOf(d); return function (t) { return R.barPathH(0, yy(i), x(d.v) * t, bh, 2); }; }); });

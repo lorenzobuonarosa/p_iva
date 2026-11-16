@@ -15,7 +15,7 @@ Indice con anteprime e snippet: https://lorenzobuonarosa.github.io/p_iva/
 ## Note sui dati
 
 - CSV con separatore `;` e virgola decimale, UTF-8. Tutti i numeri mostrati sono letti dai CSV.
-- `fasce-ricavi.csv`: la fascia 20-50mila è calcolata per differenza dal totale (riga `Totale`, 2.027.665), ed è più chiara nel grafico. Aggiunta la colonna `ricavi_zero` (72.000) per l'annotazione. Il campo `nota` della prima riga è tra virgolette perché contiene un `;`.
+- `fasce-ricavi.csv`: la fascia 20-50mila è calcolata per differenza dal totale (riga `Totale`, 2.027.665), segnalata solo nel tooltip (nel grafico è blu come le altre, scelta redazionale). Aggiunta la colonna `ricavi_zero` (72.000) per l'annotazione. Il campo `nota` della prima riga è tra virgolette perché contiene un `;`.
 - L'imposta sostitutiva media nel sottotitolo di `fasce-ricavi` è una costante commentata nel codice: 3.791.816 migliaia di euro / 1.813.308 contribuenti (MEF) ≈ 2.091 euro.
 - `costo`: il costo complessivo del regime (3,4 miliardi, 2025) è una stima della Corte dei conti; il costo della misura comprende la conferma a 35mila euro della soglia per i redditi da lavoro dipendente.
 
