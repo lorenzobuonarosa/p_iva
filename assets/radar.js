@@ -107,6 +107,7 @@
 
   // ---------- Altezza iframe ----------
   function postHeight() {
+    if (!document.body) return;   // pagina non ancora pronta (script in <head>): riprova al load
     var el = document.querySelector(".radar") || document.body;
     var cs = getComputedStyle(document.body);
     var h = Math.ceil(el.getBoundingClientRect().height + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom));
