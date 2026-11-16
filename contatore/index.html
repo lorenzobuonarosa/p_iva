@@ -385,8 +385,8 @@
       h.innerHTML = warn + (codeState === "ok" ? "<b>" + C.formatta(ateco.value) + "</b> → " + g.nome + ". " : codeState === "no" ? g.nome + ". " : "Scrivi il codice oppure scegli il gruppo. ") +
         "Nel forfettario il reddito è " + art(g.coeff) + "<b>" + g.coeff + "%</b> degli incassi" + (codeState === "ok" ? "" : " (codici ATECO " + g.codici + ")") + ".";
       var presunte = 100 - r.coeff;
-      document.getElementById("costi-hint").innerHTML = "Affitto, attrezzature, auto, materiali, software… Contano solo nell'ordinario, dove le tasse si pagano su incassi meno spese. " +
-        "Nel forfettario il fisco presume spese pari " + (/^(8|11)/.test(String(presunte)) ? "all'" : "al ") + "<b>" + presunte + "%</b> degli incassi, qualunque cosa spendi davvero." +
+      document.getElementById("costi-hint").innerHTML = "Affitto, attrezzature, auto, materiali, software… Indicale sempre, in qualunque regime sei: servono per il confronto. Nell'ordinario abbassano le tasse, perché si pagano su incassi meno spese. " +
+        "Nel forfettario no, ma riducono comunque quello che ti resta: lì il fisco presume spese pari " + (/^(8|11)/.test(String(presunte)) ? "all'" : "al ") + "<b>" + presunte + "%</b> degli incassi, qualunque cosa spendi davvero." +
         (S.costi > presunte ? " Le tue spese sono più alte: l'ordinario guadagna terreno." : "");
       txt("f-sub", "coefficiente " + r.coeff + "%, imposta al " + F.aliquota + "%");
       txt("f-tax-l", "Imposta sostitutiva (" + F.aliquota + "%)");
