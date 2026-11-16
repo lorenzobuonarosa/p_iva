@@ -340,7 +340,7 @@
       "<li><b>Codici ATECO e coefficienti.</b> Tabella dell'allegato 4 della legge 190/2014, che usa i codici ATECO 2007: " + G.map(function (g) { return g.nome.toLowerCase() + " (" + g.codici + ") " + g.coeff + "%"; }).join("; ") + ". Con la classificazione ATECO 2025, in vigore da aprile 2025, i coefficienti restano questi finché non ne arrivano di nuovi: chi ha un codice nuovo trova quello corrispondente nella tabella di raccordo dell'ISTAT. La previdenza predefinita segue il gruppo e si può cambiare.</li>" +
       "<li><b>Parametri INPS:</b> valori 2026 (circolari INPS n. 8 e n. 14 del 2026), in attesa di quelli 2027. Massimale per chi ha iniziato a versare dal 1996.</li>" +
       "<li><b>Spese.</b> Nell'ordinario le tasse si pagano sugli incassi meno le spese reali indicate dal lettore. Nel forfettario le spese non si indicano: la legge le fissa a 100 meno il coefficiente di redditività (per esempio il 22% degli incassi con il coefficiente del 78%).</li>" +
-      "<li><b>«Ti restano»</b> = incassi − spese − contributi − imposte: nell'ordinario con le spese reali indicate, nel forfettario con le spese forfettarie fissate dalla legge.</li>" +
+      "<li><b>«Ti restano»</b> (solo nell'ordinario) = incassi − spese reali − contributi − imposte. Nel forfettario non si calcola, perché le spese vere non sono note: la barra mostra il resto degli incassi dopo imposte e contributi.</li>" +
       "</ul><p>Stima indicativa: non considera altre detrazioni, altri redditi, casse professionali private, acconti, crediti d'imposta e regole specifiche dei singoli settori. Non sostituisce il calcolo di un commercialista.</p>";
 
     // ---- aggiornamento risultati ----
@@ -421,8 +421,7 @@
           ["Contributi INPS", e0(F.contributi), "pay", prevLab],
           ["Reddito imponibile", e0(F.imponibile), "step", "reddito meno contributi"],
           ["Imposta sostitutiva", e0(F.imposte), "pay", F.aliquota + "% del reddito imponibile"],
-          ["Totale da pagare", e0(F.prelievo), "tot"],
-          ["Ti restano, dopo le spese", e0(F.netto), "net"]
+          ["Totale da pagare", e0(F.prelievo), "tot"]
         ];
       } else {
         document.getElementById("bill-h").innerHTML = "Il conto con l'ordinario <small>spese reali al " + S.costi + "%</small>";
@@ -444,14 +443,15 @@
       document.getElementById("bill").innerHTML = rowsHTML(rows);
 
       // barra: dove vanno gli incassi
-      var spe = reg === "ord" ? r.costiReali : F.speseForf, net = Math.max(0, reg === "ord" ? O.restano : F.netto);
+      // nel forfettario la barra mostra solo imposte, contributi e il resto degli incassi (niente spese né «Ti restano»)
+      var spe = reg === "ord" ? r.costiReali : 0, net = Math.max(0, reg === "ord" ? O.restano : S.incassi - F.prelievo);
       var parts = [X.imposte, X.contributi, spe, net], tot = d3.sum(parts) || 1;
       document.querySelectorAll("#split i").forEach(function (el, i) { el.style.width = (parts[i] / tot * 100) + "%"; el.style.display = parts[i] > 0 ? null : "none"; });
       document.getElementById("split-key").innerHTML =
         '<span><i class="sw sw--tax"></i>Imposte <b>' + e0(X.imposte) + "</b></span>" +
         '<span><i class="sw sw--con"></i>Contributi <b>' + e0(X.contributi) + "</b></span>" +
         (spe ? '<span><i class="sw sw--spe"></i>' + (reg === "forf" ? "Spese forfettarie" : "Spese") + ' <b>' + e0(spe) + "</b></span>" : "") +
-        '<span><i class="sw sw--net"></i>Ti restano <b>' + e0(net) + "</b></span>";
+        '<span><i class="sw sw--net"></i>' + (reg === "ord" ? "Ti restano" : "Resto degli incassi") + ' <b>' + e0(net) + "</b></span>";
 
       // confronto, in piccolo
       var alt = document.getElementById("alt");
