@@ -20,7 +20,7 @@
   .num-in { display: inline-flex; align-items: baseline; gap: 4px; border-bottom: 1.5px solid var(--ink); padding: 0 0 2px; }
   .num-in input {
     font: 700 24px/1.1 var(--sans); letter-spacing: -0.02em; color: var(--ink); background: transparent; border: 0; outline: none;
-    width: 6.2ch; text-align: right; font-variant-numeric: tabular-nums; padding: 0;
+    width: 7.4ch; text-align: right; font-variant-numeric: tabular-nums; padding: 0;
   }
   .num-in span { font-size: 15px; font-weight: 600; color: var(--ink-2); }
   .num-in:focus-within { border-color: var(--blue); }
@@ -142,10 +142,10 @@
     <div class="ctl__full">
       <div class="inc-head">
         <label for="inc-num">Incassi annui <span style="font-weight:400;color:var(--ink-2)">(ricavi o compensi, al netto dell'IVA)</span></label>
-        <span class="num-in"><input id="inc-num" type="text" inputmode="numeric" aria-label="Incassi annui in euro"><span>euro</span></span>
+        <span class="num-in"><input id="inc-num" type="text" inputmode="numeric" aria-label="Incassi annui in euro, anche oltre 150.000"><span>euro</span></span>
       </div>
       <div class="rng" id="inc-rng">
-        <input id="inc" type="range" min="10000" max="150000" step="1000" value="90000" aria-label="Incassi annui">
+        <input id="inc" type="range" min="10000" max="150000" step="1000" value="90000" aria-label="Incassi annui" data-max-campo="1000000">
       </div>
       <p class="hint" id="inc-hint"></p>
     </div>
@@ -244,7 +244,8 @@
 
     // ---- controlli ----
     var inc = document.getElementById("inc"), incNum = document.getElementById("inc-num");
-    var MIN = +inc.min, MAX = +inc.max;
+    // il cursore arriva a 150.000 (le soglie restano leggibili); il campo numerico accetta cifre più alte
+    var MIN = +inc.min, MAX = +inc.max, MAX_CAMPO = +inc.dataset.maxCampo;
     var rngBox = document.getElementById("inc-rng");
     var pos = function (v) { var f = (v - MIN) / (MAX - MIN); return "calc(9px + (100% - 18px) * " + f + ")"; };
     [P.soglia_iva, P.soglia_irpef, P.uscita_immediata_irpef].forEach(function (v) {
@@ -273,14 +274,15 @@
     bindSeg("prev", "prev"); bindSeg("cli", "clienti"); bindSeg("reg", "regimeScelto");
 
     function syncInc() {
-      inc.value = S.incassi; incNum.value = fmt(S.incassi, 0);
-      inc.style.setProperty("--p", ((S.incassi - MIN) / (MAX - MIN) * 100) + "%");
+      var v = Math.min(S.incassi, MAX);   // oltre 150.000 il cursore resta tutto a destra
+      inc.value = v; incNum.value = fmt(S.incassi, 0);
+      inc.style.setProperty("--p", ((v - MIN) / (MAX - MIN) * 100) + "%");
     }
     inc.addEventListener("input", function () { S.incassi = +inc.value; syncInc(); update(); });
     incNum.addEventListener("focus", function () { incNum.value = String(S.incassi); incNum.select(); });
     function readNum() {
       var v = parseInt(incNum.value.replace(/[^\d]/g, ""), 10);
-      if (!isNaN(v)) { S.incassi = Math.max(MIN, Math.min(MAX, v)); }
+      if (!isNaN(v)) { S.incassi = Math.max(MIN, Math.min(MAX_CAMPO, v)); }
       syncInc(); update();
     }
     incNum.addEventListener("change", readNum);
