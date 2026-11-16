@@ -1,18 +1,9 @@
 /* Radar – QN · calcolo del contatore forfettario/ordinario.
-   Nessun parametro numerico qui: tutto arriva da data/parametri-contatore.csv (oggetto P, valori in euro o in %).
+   Nessun parametro numerico qui: tutto arriva da data/parametri-contatore.csv (oggetto P, valori in euro o in %)
+   e da data/ateco-coefficienti.csv (gruppi di codici ATECO con coefficiente di redditività e previdenza predefinita).
    Usato sia dalla pagina sia dal test (node contatore/test.js). */
 (function (root) {
   "use strict";
-
-  // attività: chiave del coefficiente, previdenza predefinita, gestione INPS se artigiani e commercianti
-  var ATTIVITA = [
-    { id: "professionista", label: "Professionista (avvocato, consulente, architetto, sanità, istruzione, finanza)", coeff: "coeff_professionista", prev: "gs", artcom: "artigiani" },
-    { id: "commercio", label: "Commercio, alimentari, ristorazione e alloggio", coeff: "coeff_commercio", prev: "artcom", artcom: "commercianti" },
-    { id: "ambulante", label: "Commercio ambulante non alimentare", coeff: "coeff_ambulante", prev: "artcom", artcom: "commercianti" },
-    { id: "intermediario", label: "Intermediario del commercio", coeff: "coeff_intermediario", prev: "artcom", artcom: "commercianti" },
-    { id: "costruzioni", label: "Costruzioni e attività immobiliari", coeff: "coeff_costruzioni", prev: "artcom", artcom: "artigiani" },
-    { id: "altre", label: "Altre attività", coeff: "coeff_altre", prev: "artcom", artcom: "artigiani" }
-  ];
 
   function pc(v) { return v / 100; }
 
@@ -47,12 +38,12 @@
   }
 
   /**
-   * input: { incassi, attivita (id), prev ("gs"|"artcom"), costi (%), startup (bool), clienti ("imprese"|"privati") }
+   * input: { incassi, gruppo (da gruppi()), prev ("gs"|"artcom"), costi (%), startup (bool), clienti ("imprese"|"privati") }
    */
   function calcola(P, inp) {
-    var att = ATTIVITA.filter(function (a) { return a.id === inp.attivita; })[0] || ATTIVITA[0];
+    var att = inp.gruppo;
     var I = inp.incassi, costiReali = I * pc(inp.costi);
-    var coeff = P[att.coeff];
+    var coeff = att.coeff;
 
     // ---- Forfettario (regole 2027) ----
     var fRed = I * pc(coeff);
@@ -102,6 +93,38 @@
     return { att: att, coeff: coeff, costiReali: costiReali, forf: forf, ord: ord, fascia: fascia, risparmio: risparmio, ivaScorporo: ivaScorporo };
   }
 
+  /** Righe di data/ateco-coefficienti.csv -> gruppi, con i prefissi ridotti a sole cifre ("46.2" -> "462") */
+  function gruppi(rows, num) {
+    return rows.map(function (r, i) {
+      return {
+        id: "g" + i, nome: r.gruppo, codici: r.codici_ateco, coeff: num(r.coefficiente),
+        prev: r.previdenza, artcom: r.gestione_artcom,
+        prefissi: r.prefissi.split(/\s+/).filter(Boolean).map(cifre)
+      };
+    });
+  }
+  /** "62.01.00", "6201", "62,01" -> "620100" */
+  function cifre(code) { return String(code || "").replace(/\D/g, ""); }
+  /** "620100" -> "62.01.00" */
+  function formatta(code) {
+    var d = cifre(code).slice(0, 6), out = d.slice(0, 2);
+    if (d.length > 2) out += "." + d.slice(2, 4);
+    if (d.length > 4) out += "." + d.slice(4, 6);
+    return out;
+  }
+  /** Gruppo della tabella dei coefficienti per un codice ATECO: vince il prefisso più lungo.
+      Restituisce null se il codice non è in tabella o è troppo corto per decidere (es. "47" o "47.8"). */
+  function trovaGruppo(G, code) {
+    var d = cifre(code), best = null, bestLen = 0;
+    if (d.length < 2) return null;
+    G.forEach(function (g) {
+      g.prefissi.forEach(function (p) {
+        if (d.indexOf(p) === 0 && p.length > bestLen) { best = g; bestLen = p.length; }
+      });
+    });
+    return best;
+  }
+
   /** Converte le righe del CSV parametri in oggetto {parametro: numero} */
   function params(rows, num) {
     var P = {};
@@ -109,7 +132,7 @@
     return P;
   }
 
-  var api = { ATTIVITA: ATTIVITA, calcola: calcola, contributi: contributi, irpefLorda: irpefLorda, detrazione: detrazione, params: params };
+  var api = { gruppi: gruppi, trovaGruppo: trovaGruppo, formatta: formatta, cifre: cifre, calcola: calcola, contributi: contributi, irpefLorda: irpefLorda, detrazione: detrazione, params: params };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Contatore = api;
 })(this);

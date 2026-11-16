@@ -58,6 +58,14 @@
   .seg button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
   .seg button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
+  .ateco-row { display: flex; gap: 14px; align-items: flex-end; }
+  .ateco-row select { flex: 1 1 auto; min-width: 0; }
+  .code-in { flex: none; border-bottom: 1.5px solid var(--ink); }
+  .code-in:focus-within { border-color: var(--blue); }
+  .code-in input { font: 700 18px/1.3 var(--sans); color: var(--ink); background: transparent; border: 0; outline: none; width: 5.6em; padding: 0 0 2px; font-variant-numeric: tabular-nums; }
+  .code-in input::placeholder { color: var(--ink-2); font-weight: 400; }
+  .hint b { color: var(--ink); font-weight: 600; }
+  .hint .warn { color: var(--red); font-weight: 600; }
   .chk { display: flex !important; align-items: center; gap: 8px; font-weight: 500 !important; cursor: pointer; margin: 0 !important; font-size: 13px; }
   .chk input { accent-color: var(--blue); width: 16px; height: 16px; margin: 0; }
 
@@ -131,9 +139,12 @@
       </div>
     </div>
 
-    <div>
-      <label for="att">Attività</label>
-      <select id="att"></select>
+    <div class="ctl__full">
+      <label for="ateco">Codice ATECO della tua attività</label>
+      <div class="ateco-row">
+        <span class="code-in"><input id="ateco" type="text" inputmode="decimal" placeholder="es. 69.10" maxlength="8" aria-describedby="att-hint"></span>
+        <select id="att" aria-label="Oppure scegli il gruppo di codici ATECO"></select>
+      </div>
       <p class="hint" id="att-hint"></p>
     </div>
 
@@ -143,14 +154,7 @@
         <button type="button" data-v="gs">Gestione separata INPS (professionisti senza cassa)</button>
         <button type="button" data-v="artcom">Artigiani e commercianti INPS</button>
       </div>
-    </div>
-
-    <div>
-      <label for="costi">Costi reali dell'attività: <span class="val-inline" id="costi-v"></span> degli incassi</label>
-      <div class="rng rng--small" style="padding-bottom:0">
-        <input id="costi" type="range" min="0" max="60" step="1" value="15">
-      </div>
-      <p class="hint">Servono solo per il regime ordinario, dove si deducono le spese vere. Nel forfettario conta il coefficiente dell'attività.</p>
+      <p class="hint">Si imposta in base al codice ATECO: cambiala se il tuo caso è diverso.</p>
     </div>
 
     <div>
@@ -161,6 +165,14 @@
       </div>
       <label class="chk" style="margin-top:14px !important"><input type="checkbox" id="start"> Attività avviata da meno di 5 anni</label>
     </div>
+    <div class="ctl__full">
+      <label for="costi">Spese reali per lavorare: <span class="val-inline" id="costi-v"></span> degli incassi</label>
+      <div class="rng rng--small" style="padding-bottom:0">
+        <input id="costi" type="range" min="0" max="60" step="1" value="15">
+      </div>
+      <p class="hint" id="costi-hint"></p>
+    </div>
+
   </form>
 
   <section class="res" aria-live="polite">
@@ -195,7 +207,7 @@
     <div class="r-key">
       <span><i class="sw" style="background:var(--blue-2)"></i>Imposte</span>
       <span><i class="sw" style="background:var(--blue-4)"></i>Contributi</span>
-      <span>Barre sulla stessa scala. «Ti restano» = incassi − costi reali − contributi − imposte</span>
+      <span>Barre sulla stessa scala. «Ti restano» = incassi − spese reali − contributi − imposte</span>
     </div>
 
     <p class="iva" id="iva" hidden></p>
@@ -219,9 +231,13 @@
   var p1 = function (v) { return fmt(v, 1).replace(/,0$/, "") + "%"; };
   var pp = function (v) { return fmt(v, 2).replace(/0$/, "").replace(/,0$/, "") + "%"; };
 
-  R.loadCSV("../data/parametri-contatore.csv").then(function (rows) {
-    var P = C.params(rows, R.num);
-    var S = { incassi: 90000, attivita: "professionista", prev: "gs", costi: 15, startup: false, clienti: "imprese" };
+  Promise.all([R.loadCSV("../data/parametri-contatore.csv"), R.loadCSV("../data/ateco-coefficienti.csv")]).then(function (res) {
+    var P = C.params(res[0], R.num);
+    var G = C.gruppi(res[1], R.num);
+    // gruppo iniziale: attività professionali (il primo con gestione separata)
+    var g0 = G.filter(function (g) { return g.prev === "gs"; })[0] || G[0];
+    var S = { incassi: 90000, gruppo: g0, prev: g0.prev, costi: 15, startup: false, clienti: "imprese" };
+    var codeState = "";   // "" = nessun codice, "ok" = riconosciuto, "no" = non trovato
 
     // ---- controlli ----
     var inc = document.getElementById("inc"), incNum = document.getElementById("inc-num");
@@ -238,9 +254,9 @@
       d.textContent = fmt(q[0] / 1000, 0) + "mila"; rngBox.appendChild(d);
     });
 
-    var att = document.getElementById("att");
-    C.ATTIVITA.forEach(function (a) {
-      var o = document.createElement("option"); o.value = a.id; o.textContent = a.label; att.appendChild(o);
+    var att = document.getElementById("att"), ateco = document.getElementById("ateco");
+    G.forEach(function (g) {
+      var o = document.createElement("option"); o.value = g.id; o.textContent = g.nome + " (ATECO " + g.codici + ")"; att.appendChild(o);
     });
 
     function setSeg(id, v) {
@@ -267,29 +283,53 @@
     incNum.addEventListener("change", readNum);
     incNum.addEventListener("keydown", function (ev) { if (ev.key === "Enter") { readNum(); incNum.blur(); } });
 
+    function setGruppo(g) {
+      S.gruppo = g; att.value = g.id;
+      // la previdenza predefinita segue il gruppo ATECO
+      S.prev = g.prev; setSeg("prev", S.prev);
+    }
     att.addEventListener("change", function () {
-      S.attivita = att.value;
-      // la previdenza predefinita segue l'attività
-      S.prev = C.ATTIVITA.filter(function (a) { return a.id === S.attivita; })[0].prev;
-      setSeg("prev", S.prev); update();
+      setGruppo(G.filter(function (g) { return g.id === att.value; })[0]);
+      // un codice scritto prima che non appartiene al gruppo scelto si cancella
+      if (ateco.value && C.trovaGruppo(G, ateco.value) !== S.gruppo) { ateco.value = ""; }
+      codeState = ateco.value ? "ok" : "";
+      update();
+    });
+    ateco.addEventListener("input", function () {
+      var d = C.cifre(ateco.value);
+      if (d.length < 2) { codeState = ""; update(); return; }
+      var g = C.trovaGruppo(G, d);
+      if (g) { codeState = "ok"; if (g !== S.gruppo) setGruppo(g); }
+      // mentre si scrive "47" o "47.8" non si segnala errore: il codice può essere ancora incompleto
+      else codeState = d.length >= 4 ? "no" : "";
+      update();
+    });
+    ateco.addEventListener("change", function () {
+      var d = C.cifre(ateco.value);
+      if (d.length >= 2) {
+        ateco.value = C.formatta(d);
+        if (!C.trovaGruppo(G, d)) { codeState = "no"; update(); }
+      }
     });
     var costi = document.getElementById("costi"), costiV = document.getElementById("costi-v");
     function syncCosti() { costi.value = S.costi; costiV.textContent = S.costi + "%"; costi.style.setProperty("--p", (S.costi / 60 * 100) + "%"); }
     costi.addEventListener("input", function () { S.costi = +costi.value; syncCosti(); update(); });
     document.getElementById("start").addEventListener("change", function (ev) { S.startup = ev.target.checked; update(); });
 
-    att.value = S.attivita; setSeg("prev", S.prev); setSeg("cli", S.clienti); syncInc(); syncCosti();
+    att.value = S.gruppo.id; setSeg("prev", S.prev); setSeg("cli", S.clienti); syncInc(); syncCosti();
 
     // ---- nota metodologica (parametri dal CSV) ----
     document.getElementById("meth-body").innerHTML =
       "<ul>" +
-      "<li><b>Forfettario (regole 2027).</b> Reddito = incassi × coefficiente di redditività dell'attività. Contributi sul reddito così calcolato; imponibile = reddito − contributi; imposta sostitutiva del " + P.aliquota_forfettario + "% (" + P.aliquota_startup + "% nei primi 5 anni di attività). Niente IRPEF, niente addizionali. Il forfettario vale fino a " + fmt(P.soglia_irpef, 0) + " euro di incassi; tra " + fmt(P.soglia_irpef, 0) + " e " + fmt(P.uscita_immediata_irpef, 0) + " euro si resta per l'anno in corso e si esce dal successivo; oltre " + fmt(P.uscita_immediata_irpef, 0) + " euro si esce subito. Per l'IVA la soglia resta a " + fmt(P.soglia_iva, 0) + " euro.</li>" +
-      "<li><b>Ordinario (regole 2027).</b> Reddito = incassi − costi reali indicati. Imponibile = reddito − contributi. IRPEF " + P.irpef_a1 + "% fino a " + fmt(P.irpef_s1, 0) + " euro, " + P.irpef_a2 + "% fino a " + fmt(P.irpef_s2, 0) + " (scaglione previsto per il 2027 dall'art. 9, comma 1, del DDL di bilancio), " + P.irpef_a3 + "% oltre. Detrazione per lavoro autonomo (art. 13, comma 5, TUIR) calcolata sull'imponibile: " + fmt(P.detr_max, 0) + " euro fino a " + fmt(P.detr_l1, 0) + "; " + fmt(P.detr_base, 0) + " + " + fmt(P.detr_var, 0) + " × (" + fmt(P.detr_l2, 0) + " − reddito) / " + fmt(P.detr_l2 - P.detr_l1, 0) + " fino a " + fmt(P.detr_l2, 0) + "; " + fmt(P.detr_base, 0) + " × (" + fmt(P.detr_l3, 0) + " − reddito) / " + fmt(P.detr_l3 - P.detr_l2, 0) + " fino a " + fmt(P.detr_l3, 0) + "; zero oltre.</li>" +
+      "<li><b>Forfettario (regole 2027).</b> Reddito = incassi × coefficiente di redditività del gruppo ATECO. Contributi sul reddito così calcolato; imponibile = reddito − contributi; imposta sostitutiva del " + P.aliquota_forfettario + "% (" + P.aliquota_startup + "% nei primi 5 anni di attività). Niente IRPEF, niente addizionali. Il forfettario vale fino a " + fmt(P.soglia_irpef, 0) + " euro di incassi; tra " + fmt(P.soglia_irpef, 0) + " e " + fmt(P.uscita_immediata_irpef, 0) + " euro si resta per l'anno in corso e si esce dal successivo; oltre " + fmt(P.uscita_immediata_irpef, 0) + " euro si esce subito. Per l'IVA la soglia resta a " + fmt(P.soglia_iva, 0) + " euro.</li>" +
+      "<li><b>Ordinario (regole 2027).</b> Reddito = incassi − spese reali indicate. Imponibile = reddito − contributi. IRPEF " + P.irpef_a1 + "% fino a " + fmt(P.irpef_s1, 0) + " euro, " + P.irpef_a2 + "% fino a " + fmt(P.irpef_s2, 0) + " (scaglione previsto per il 2027 dall'art. 9, comma 1, del DDL di bilancio), " + P.irpef_a3 + "% oltre. Detrazione per lavoro autonomo (art. 13, comma 5, TUIR) calcolata sull'imponibile: " + fmt(P.detr_max, 0) + " euro fino a " + fmt(P.detr_l1, 0) + "; " + fmt(P.detr_base, 0) + " + " + fmt(P.detr_var, 0) + " × (" + fmt(P.detr_l2, 0) + " − reddito) / " + fmt(P.detr_l2 - P.detr_l1, 0) + " fino a " + fmt(P.detr_l2, 0) + "; " + fmt(P.detr_base, 0) + " × (" + fmt(P.detr_l3, 0) + " − reddito) / " + fmt(P.detr_l3 - P.detr_l2, 0) + " fino a " + fmt(P.detr_l3, 0) + "; zero oltre.</li>" +
       "<li><b>Addizionali.</b> Regionale " + pp(P.add_regionale) + " e comunale " + pp(P.add_comunale) + " dell'imponibile: sono le aliquote medie effettive calcolate sui dati MEF 2024 dei contribuenti con volume d'affari tra 75mila e 100mila euro (97,19 milioni di addizionale regionale e 38,50 milioni di comunale su 5.537,6 milioni di imponibile). Le aliquote vere dipendono da regione e comune.</li>" +
       "<li><b>Gestione separata.</b> " + pp(P.aliquota_gs) + " del reddito, fino al massimale di " + fmt(P.massimale, 0) + " euro.</li>" +
-      "<li><b>Artigiani e commercianti.</b> Contributo fisso sul minimale di " + fmt(P.minimale_artcom, 0) + " euro (" + fmt(P.fisso_artigiani, 2) + " euro artigiani, " + fmt(P.fisso_commercianti, 2) + " euro commercianti), più il " + pp(P.aliquota_artigiani) + " (artigiani) o il " + pp(P.aliquota_commercianti) + " (commercianti) sul reddito oltre il minimale, che salgono al " + pp(P.aliquota_artigiani_2) + " e al " + pp(P.aliquota_commercianti_2) + " oltre " + fmt(P.fascia2_artcom, 0) + " euro, fino al massimale di " + fmt(P.massimale, 0) + " euro. Nel forfettario si applica la riduzione del " + P.riduzione_forfettari_artcom + "% (va chiesta all'INPS), sull'intero importo. Si usano i valori dei commercianti per commercio, ambulanti e intermediari, quelli degli artigiani per costruzioni, altre attività e professionisti iscritti a questa gestione.</li>" +
+      "<li><b>Artigiani e commercianti.</b> Contributo fisso sul minimale di " + fmt(P.minimale_artcom, 0) + " euro (" + fmt(P.fisso_artigiani, 2) + " euro artigiani, " + fmt(P.fisso_commercianti, 2) + " euro commercianti), più il " + pp(P.aliquota_artigiani) + " (artigiani) o il " + pp(P.aliquota_commercianti) + " (commercianti) sul reddito oltre il minimale, che salgono al " + pp(P.aliquota_artigiani_2) + " e al " + pp(P.aliquota_commercianti_2) + " oltre " + fmt(P.fascia2_artcom, 0) + " euro, fino al massimale di " + fmt(P.massimale, 0) + " euro. Nel forfettario si applica la riduzione del " + P.riduzione_forfettari_artcom + "% (va chiesta all'INPS), sull'intero importo. Si usano i valori dei commercianti per " + G.filter(function (g) { return g.artcom === "commercianti"; }).map(function (g) { return g.nome.toLowerCase(); }).join(", ") + "; quelli degli artigiani per gli altri gruppi.</li>" +
+      "<li><b>Codici ATECO e coefficienti.</b> Tabella dell'allegato 4 della legge 190/2014, che usa i codici ATECO 2007: " + G.map(function (g) { return g.nome.toLowerCase() + " (" + g.codici + ") " + g.coeff + "%"; }).join("; ") + ". Con la classificazione ATECO 2025, in vigore da aprile 2025, i coefficienti restano questi finché non ne arrivano di nuovi: chi ha un codice nuovo trova quello corrispondente nella tabella di raccordo dell'ISTAT. La previdenza predefinita segue il gruppo e si può cambiare.</li>" +
       "<li><b>Parametri INPS:</b> valori 2026 (circolari INPS n. 8 e n. 14 del 2026), in attesa di quelli 2027. Massimale per chi ha iniziato a versare dal 1996.</li>" +
-      "<li><b>«Ti restano»</b> = incassi − costi reali − contributi − imposte, in entrambi i regimi: nel forfettario i costi non si deducono, ma si sostengono lo stesso. L'aliquota effettiva è il prelievo totale diviso per il reddito reale (incassi − costi reali).</li>" +
+      "<li><b>Spese reali.</b> Nell'ordinario le tasse si pagano sugli incassi meno le spese sostenute per lavorare. Nel forfettario le spese vere non contano: il fisco presume che siano pari a 100 meno il coefficiente (per esempio il 22% degli incassi con il coefficiente del 78%).</li>" +
+      "<li><b>«Ti restano»</b> = incassi − spese reali − contributi − imposte, in entrambi i regimi: nel forfettario le spese non si deducono, ma si pagano lo stesso. L'aliquota effettiva è il prelievo totale diviso per il reddito reale (incassi − spese reali).</li>" +
       "</ul><p>Stima indicativa: non considera altre detrazioni, altri redditi, casse professionali private, acconti, crediti d'imposta e regole specifiche dei singoli settori. Non sostituisce il calcolo di un commercialista.</p>";
 
     // ---- aggiornamento risultati ----
@@ -328,14 +368,26 @@
       if (F.disponibile) {
         var s = r.risparmio;
         animateBig(Math.abs(s), s >= 0 ? "blue" : "red");
-        txt("big-label", s >= 0 ? "in più ti restano in un anno con il forfettario rispetto al regime ordinario" : "in più ti restano in un anno con il regime ordinario: con questi costi reali il forfettario non conviene");
+        txt("big-label", s >= 0 ? "in più ti restano in un anno con il forfettario rispetto al regime ordinario" : "in più ti restano in un anno con il regime ordinario: con spese così alte il forfettario non conviene");
       } else {
         animateBig(null, null);
         txt("big-label", "nessun confronto possibile: con questi incassi il forfettario non è disponibile");
       }
 
       // colonne
-      txt("att-hint", "Coefficiente di redditività nel forfettario: " + r.coeff + "% degli incassi");
+      var g = S.gruppo, h = document.getElementById("att-hint");
+      var art = function (n) { return /^(8|11)/.test(String(n)) ? "l'" : "il "; };   // "il 78%", "l'86%"
+      var dIn = C.cifre(ateco.value);
+      var incompleto = G.some(function (q) { return q.prefissi.some(function (p) { return p.length > dIn.length && p.indexOf(dIn) === 0; }); });
+      var warn = codeState !== "no" ? "" : incompleto
+        ? '<span class="warn">Codice incompleto: aggiungi le cifre successive.</span> Per ora: '
+        : '<span class="warn">Codice non trovato nella tabella del forfettario: controlla le cifre o scegli il gruppo dall\'elenco.</span> Per ora: ';
+      h.innerHTML = warn + (codeState === "ok" ? "<b>" + C.formatta(ateco.value) + "</b> → " + g.nome + ". " : codeState === "no" ? g.nome + ". " : "Scrivi il codice oppure scegli il gruppo. ") +
+        "Nel forfettario il reddito è " + art(g.coeff) + "<b>" + g.coeff + "%</b> degli incassi" + (codeState === "ok" ? "" : " (codici ATECO " + g.codici + ")") + ".";
+      var presunte = 100 - r.coeff;
+      document.getElementById("costi-hint").innerHTML = "Affitto, attrezzature, auto, materiali, software… Contano solo nell'ordinario, dove le tasse si pagano su incassi meno spese. " +
+        "Nel forfettario il fisco presume spese pari " + (/^(8|11)/.test(String(presunte)) ? "all'" : "al ") + "<b>" + presunte + "%</b> degli incassi, qualunque cosa spendi davvero." +
+        (S.costi > presunte ? " Le tue spese sono più alte: l'ordinario guadagna terreno." : "");
       txt("f-sub", "coefficiente " + r.coeff + "%, imposta al " + F.aliquota + "%");
       txt("f-tax-l", "Imposta sostitutiva (" + F.aliquota + "%)");
       var fe = F.disponibile ? e0 : function () { return "–"; };

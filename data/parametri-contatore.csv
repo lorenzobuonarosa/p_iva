@@ -30,9 +30,3 @@ soglia_irpef;100000;euro, soglia del forfettario per imposte e contributi (2027)
 uscita_immediata_irpef;115000;euro, oltre si esce subito dal forfettario
 uscita_immediata_iva;100000;euro, oltre si applica subito l'IVA ordinaria
 iva;22;%
-coeff_professionista;78;% coefficiente di redditività
-coeff_commercio;40;%
-coeff_ambulante;54;%
-coeff_intermediario;62;%
-coeff_costruzioni;86;%
-coeff_altre;67;%
