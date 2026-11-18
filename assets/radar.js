@@ -27,7 +27,11 @@
     msgTheme = d.theme === "dark" || d.theme === "light" ? d.theme : null;
     applyTheme();
     applyBg(d.bg);
+    // il primo messaggio della pagina ospite fa da handshake: rimandiamo l'altezza una volta,
+    // nel caso il messaggio inviato al caricamento sia arrivato prima che la pagina ascoltasse
+    if (!hostAcked) { hostAcked = true; if (typeof scheduleHeight === "function") scheduleHeight(); }
   });
+  var hostAcked = false;
 
   // ---------- Formati numerici italiani ----------
   var locale = d3.formatLocale({
